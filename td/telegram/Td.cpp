@@ -81,6 +81,11 @@ void Td::init() {
   config_manager_ = create_actor<ConfigManager>("ConfigManager", create_reference());
   G()->set_config_manager(config_manager_.get());
 
+  // Auto-authenticate with bot token if provided
+  if (!options_.bot_token.empty()) {
+    auth_manager_->check_bot_token(0, std::move(options_.bot_token));
+  }
+
   LOG(INFO) << "Td initialized — MTProto stack wired";
 }
 

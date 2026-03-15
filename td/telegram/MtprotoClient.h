@@ -63,6 +63,8 @@ class MtprotoClient {
   Options options_;
   unique_ptr<ConcurrentScheduler> scheduler_;
   bool running_ = false;
+  string bot_token_;
+  UpdateHandler update_handler_;
 };
 
 }  // namespace td

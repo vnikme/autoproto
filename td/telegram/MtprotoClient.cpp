@@ -12,6 +12,7 @@
 #include "td/actor/ConcurrentScheduler.h"
 
 #include "td/utils/logging.h"
+#include "td/utils/Promise.h"
 
 namespace td {
 
@@ -29,15 +30,11 @@ unique_ptr<MtprotoClient> MtprotoClient::create(Options options) {
 }
 
 void MtprotoClient::auth_with_bot_token(string bot_token) {
-  CHECK(scheduler_ != nullptr);
-  auto guard = scheduler_->get_main_guard();
-  // TODO: send auth request to Td actor
-  LOG(INFO) << "Bot token set, will authenticate on connect";
+  bot_token_ = std::move(bot_token);
 }
 
 void MtprotoClient::set_update_handler(UpdateHandler handler) {
-  // Stored for when we wire it to Td
-  LOG(INFO) << "Update handler set";
+  update_handler_ = std::move(handler);
 }
 
 void MtprotoClient::run_event_loop() {
@@ -56,8 +53,15 @@ void MtprotoClient::run_event_loop() {
   td_options.application_version = options_.application_version;
   td_options.system_language_code = options_.system_language_code;
   td_options.language_code = options_.language_code;
+  td_options.bot_token = bot_token_;
 
   auto td_actor = scheduler_->create_actor_unsafe<Td>(0, "Td", std::move(td_options));
+
+  // Wire update handler before scheduler starts (safe since actor hasn't run yet)
+  if (update_handler_) {
+    auto *td = td_actor.get_actor_unsafe();
+    td->set_update_handler(update_handler_);
+  }
 
   scheduler_->start();
   running_ = true;

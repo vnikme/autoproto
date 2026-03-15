@@ -39,6 +39,7 @@ class Td final : public Actor {
     string system_language_code = "en";
     string language_pack;
     string language_code = "en";
+    string bot_token;  // if non-empty, authenticate as bot on start
   };
 
   explicit Td(Options options);

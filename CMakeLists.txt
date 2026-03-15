@@ -506,6 +506,11 @@ add_library(mtproto STATIC
 target_include_directories(mtproto PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 target_link_libraries(mtproto PUBLIC tdcore)
 
+# Smoke test executable
+add_executable(smoke_test examples/smoke_test.cpp)
+target_link_libraries(smoke_test PRIVATE mtproto)
+set_target_properties(smoke_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
 set(TD_CORE_PART_TARGETS)
 
 # Convenience target: regenerate all TL bindings from schema files
