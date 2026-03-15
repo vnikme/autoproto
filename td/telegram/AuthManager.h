@@ -52,7 +52,15 @@ class AuthManager final : public NetActor {
   void on_closing(bool destroy_flag);
 
  private:
-  enum class State : int32 { None, WaitPhoneNumber, WaitCode, Ok, LoggingOut, DestroyingKeys, Closing } state_ = State::None;
+  enum class State : int32 {
+    None,
+    WaitPhoneNumber,
+    WaitCode,
+    Ok,
+    LoggingOut,
+    DestroyingKeys,
+    Closing
+  } state_ = State::None;
 
   enum class NetQueryType : int32 { None, BotAuthentication, SendCode, SignIn };
 

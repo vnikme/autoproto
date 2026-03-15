@@ -49,8 +49,7 @@ void AuthManager::send_code(string phone_number) {
   phone_number_ = std::move(phone_number);
   net_query_type_ = NetQueryType::SendCode;
   auto settings = telegram_api::make_object<telegram_api::codeSettings>(
-      0, false, false, false, false, false, false,
-      std::vector<td::BufferSlice>{}, string(), false);
+      0, false, false, false, false, false, false, std::vector<td::BufferSlice>{}, string(), false);
   auto query = G()->net_query_creator().create_unauth(
       telegram_api::auth_sendCode(phone_number_, api_id_, api_hash_, std::move(settings)));
   net_query_id_ = query->id();
@@ -59,10 +58,8 @@ void AuthManager::send_code(string phone_number) {
 
 void AuthManager::check_code(string code) {
   net_query_type_ = NetQueryType::SignIn;
-  auto query = G()->net_query_creator().create_unauth(
-      telegram_api::auth_signIn(
-          telegram_api::auth_signIn::PHONE_CODE_MASK,
-          phone_number_, phone_code_hash_, std::move(code), nullptr));
+  auto query = G()->net_query_creator().create_unauth(telegram_api::auth_signIn(
+      telegram_api::auth_signIn::PHONE_CODE_MASK, phone_number_, phone_code_hash_, std::move(code), nullptr));
   net_query_id_ = query->id();
   G()->net_query_dispatcher().dispatch(std::move(query));
 }

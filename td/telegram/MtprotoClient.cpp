@@ -73,8 +73,8 @@ void MtprotoClient::init() {
   G()->set_net_query_dispatcher(std::move(net_query_dispatcher));
 
   // Create AuthManager
-  auth_manager_ = unique_ptr<AuthManager>(new AuthManager(options_.api_id, options_.api_hash,
-                                                          ActorShared<>(actor_shared(this, ActorIdType))));
+  auth_manager_ = unique_ptr<AuthManager>(
+      new AuthManager(options_.api_id, options_.api_hash, ActorShared<>(actor_shared(this, ActorIdType))));
   auth_manager_actor_ = register_actor("AuthManager", auth_manager_.get());
   G()->set_auth_manager(auth_manager_actor_.get());
 
@@ -128,10 +128,9 @@ void MtprotoClient::check_code(string code) {
 }
 
 void MtprotoClient::set_auth_state_callback(AuthStateCallback callback) {
-  auth_manager_->set_auth_state_callback(
-      [cb = std::move(callback)](AuthManager::AuthState state, const string &info) {
-        cb(static_cast<int>(state), info);
-      });
+  auth_manager_->set_auth_state_callback([cb = std::move(callback)](AuthManager::AuthState state, const string &info) {
+    cb(static_cast<int>(state), info);
+  });
 }
 
 void MtprotoClient::set_update_handler(UpdateHandler handler) {

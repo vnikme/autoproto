@@ -7,8 +7,8 @@
 #include "td/telegram/net/NetQueryVerifier.h"
 
 #include "td/telegram/Global.h"
-#include "td/telegram/net/NetQueryDispatcher.h"
 #include "td/telegram/MtprotoClient.h"
+#include "td/telegram/net/NetQueryDispatcher.h"
 #include "td/telegram/td_api.h"
 #include "td/telegram/telegram_api.h"
 

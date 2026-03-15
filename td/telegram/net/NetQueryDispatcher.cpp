@@ -7,6 +7,7 @@
 #include "td/telegram/net/NetQueryDispatcher.h"
 
 #include "td/telegram/Global.h"
+#include "td/telegram/MtprotoClient.h"
 #include "td/telegram/net/AuthDataShared.h"
 #include "td/telegram/net/DcAuthManager.h"
 #include "td/telegram/net/NetQuery.h"
@@ -17,7 +18,6 @@
 #include "td/telegram/net/PublicRsaKeyWatchdog.h"
 #include "td/telegram/net/SessionMultiProxy.h"
 #include "td/telegram/SequenceDispatcher.h"
-#include "td/telegram/MtprotoClient.h"
 #include "td/telegram/TdDb.h"
 #include "td/telegram/telegram_api.h"
 

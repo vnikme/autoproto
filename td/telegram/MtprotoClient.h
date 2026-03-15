@@ -59,8 +59,8 @@ class MtprotoClient final : public Actor {
     string system_language_code = "en";
     string language_pack;
     string language_code = "en";
-    string bot_token;       // if non-empty, authenticate as bot on start
-    string phone_number;    // if non-empty, start phone auth on start
+    string bot_token;     // if non-empty, authenticate as bot on start
+    string phone_number;  // if non-empty, start phone auth on start
   };
 
   explicit MtprotoClient(Options options);
@@ -78,21 +78,19 @@ class MtprotoClient final : public Actor {
   template <class T>
   void send(telegram_api::object_ptr<T> function, Promise<typename T::ReturnType> promise) {
     send_raw_query_from_function(
-        *function,
-        PromiseCreator::lambda(
-            [promise = std::move(promise)](Result<BufferSlice> r_buffer) mutable {
-              if (r_buffer.is_error()) {
-                promise.set_error(r_buffer.move_as_error());
-                return;
-              }
-              auto buffer = r_buffer.move_as_ok();
-              auto r_result = fetch_result<T>(buffer);
-              if (r_result.is_error()) {
-                promise.set_error(r_result.move_as_error());
-              } else {
-                promise.set_value(r_result.move_as_ok());
-              }
-            }));
+        *function, PromiseCreator::lambda([promise = std::move(promise)](Result<BufferSlice> r_buffer) mutable {
+          if (r_buffer.is_error()) {
+            promise.set_error(r_buffer.move_as_error());
+            return;
+          }
+          auto buffer = r_buffer.move_as_ok();
+          auto r_result = fetch_result<T>(buffer);
+          if (r_result.is_error()) {
+            promise.set_error(r_result.move_as_error());
+          } else {
+            promise.set_value(r_result.move_as_ok());
+          }
+        }));
   }
 
   // Non-template helper: creates NetQueryPtr from Function and dispatches with promise
