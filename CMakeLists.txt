@@ -345,7 +345,9 @@ set(TDLIB_SOURCE
   td/telegram/DhCache.cpp
   td/telegram/Global.cpp
   td/telegram/JsonValue.cpp
+  td/telegram/MtprotoClient.cpp
   td/telegram/SequenceDispatcher.cpp
+  td/telegram/Td.cpp
   td/telegram/logevent/LogEventHelper.cpp
   td/telegram/net/AuthDataShared.cpp
   td/telegram/net/ConnectionCreator.cpp
@@ -379,6 +381,7 @@ set(TDLIB_SOURCE
   td/telegram/Global.h
   td/telegram/JsonValue.h
   td/telegram/LanguagePackManager.h
+  td/telegram/MtprotoClient.h
   td/telegram/SequenceDispatcher.h
   td/telegram/StateManager.h
   td/telegram/Td.h
