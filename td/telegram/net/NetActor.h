@@ -16,7 +16,7 @@
 
 namespace td {
 
-class Td;
+class MtprotoClient;
 
 class NetActor : public NetQueryCallback {
  public:
@@ -38,7 +38,7 @@ class NetActor : public NetQueryCallback {
   }
 
  protected:
-  Td *td_;
+  MtprotoClient *td_;
   ActorShared<> parent_;
 
   void send_query(NetQueryPtr query);

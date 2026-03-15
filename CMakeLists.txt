@@ -347,7 +347,6 @@ set(TDLIB_SOURCE
   td/telegram/JsonValue.cpp
   td/telegram/MtprotoClient.cpp
   td/telegram/SequenceDispatcher.cpp
-  td/telegram/Td.cpp
   td/telegram/logevent/LogEventHelper.cpp
   td/telegram/net/AuthDataShared.cpp
   td/telegram/net/ConnectionCreator.cpp
@@ -384,7 +383,6 @@ set(TDLIB_SOURCE
   td/telegram/MtprotoClient.h
   td/telegram/SequenceDispatcher.h
   td/telegram/StateManager.h
-  td/telegram/Td.h
   td/telegram/TdCallback.h
   td/telegram/TdDb.h
   td/telegram/UniqueId.h
@@ -510,6 +508,16 @@ target_link_libraries(mtproto PUBLIC tdcore)
 add_executable(smoke_test examples/smoke_test.cpp)
 target_link_libraries(smoke_test PRIVATE mtproto)
 set_target_properties(smoke_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+# Echo bot example
+add_executable(echo_bot examples/echo_bot.cpp)
+target_link_libraries(echo_bot PRIVATE mtproto)
+set_target_properties(echo_bot PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+# Channel crawler example
+add_executable(channel_crawler examples/channel_crawler.cpp)
+target_link_libraries(channel_crawler PRIVATE mtproto)
+set_target_properties(channel_crawler PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 set(TD_CORE_PART_TARGETS)
 

@@ -1,142 +1,305 @@
-# TDLib
+# autoproto
 
-TDLib (Telegram Database library) is a cross-platform library for building [Telegram](https://telegram.org) clients. It can be easily used from almost any programming language.
+A stripped-down C++ MTProto library derived from [TDLib](https://github.com/tdlib/td). Provides direct access to the Telegram MTProto protocol and TL-serialized API without TDLib's high-level abstractions (UI state management, message database, file manager, etc.).
 
 ## Table of Contents
-- [Features](#features)
-- [Examples and documentation](#usage)
+- [Overview](#overview)
+- [Architecture](#architecture)
 - [Dependencies](#dependencies)
 - [Building](#building)
-- [Using in CMake C++ projects](#using-cxx)
-- [Using in Java projects](#using-java)
-- [Using in .NET projects](#using-dotnet)
-- [Using with other programming languages](#using-json)
+- [Usage](#usage)
+- [Examples](#examples)
+- [Updating the TL Schema](#updating-the-tl-schema)
+- [Project Structure](#project-structure)
 - [License](#license)
 
-<a name="features"></a>
-## Features
+<a name="overview"></a>
+## Overview
 
-`TDLib` has many advantages. Notably `TDLib` is:
+autoproto keeps TDLib's battle-tested networking, cryptography, and actor infrastructure while removing the high-level Telegram client logic. What remains is a typed C++ interface to the raw MTProto protocol:
 
-* **Cross-platform**: `TDLib` can be used on Android, iOS, Windows, macOS, Linux, FreeBSD, OpenBSD, NetBSD, illumos, Windows Phone, WebAssembly, watchOS, tvOS, visionOS, Tizen, Cygwin. It should also work on other *nix systems with or without minimal effort.
-* **Multilanguage**: `TDLib` can be easily used with any programming language that is able to execute C functions. Additionally, it already has native Java (using `JNI`) bindings and .NET (using `C++/CLI` and `C++/CX`) bindings.
-* **Easy to use**: `TDLib` takes care of all network implementation details, encryption and local data storage.
-* **High-performance**: in the [Telegram Bot API](https://core.telegram.org/bots/api), each `TDLib` instance handles more than 25000 active bots simultaneously.
-* **Well-documented**: all `TDLib` API methods and public interfaces are fully documented.
-* **Consistent**: `TDLib` guarantees that all updates are delivered in the right order.
-* **Reliable**: `TDLib` remains stable on slow and unreliable Internet connections.
-* **Secure**: all local data is encrypted using a user-provided encryption key.
-* **Fully-asynchronous**: requests to `TDLib` don't block each other or anything else, responses are sent when they are available.
+- **MTProto transport** — key exchange, encryption, session management
+- **TL serialization** — auto-generated typed C++ structs from `.tl` schemas
+- **Actor framework** — TDLib's `EventLoop` / `ConcurrentScheduler` / `Promise<T>` async model
+- **Network layer** — TCP, TLS, connection management, DC migration
+- **Authentication** — bot token and phone number auth flows
 
-<a name="usage"></a>
-## Examples and documentation
-See our [Getting Started](https://core.telegram.org/tdlib/getting-started) tutorial for a description of basic TDLib concepts.
+You work directly with `telegram_api::` types (e.g. `messages_sendMessage`, `updateNewMessage`) rather than TDLib's `td_api::` wrappers.
 
-Take a look at our [examples](https://github.com/tdlib/td/blob/master/example/README.md#tdlib-usage-and-build-examples).
+<a name="architecture"></a>
+## Architecture
 
-See a [TDLib build instructions generator](https://tdlib.github.io/td/build.html) for detailed instructions on how to build TDLib.
+```
+┌──────────────────────────────────────────────┐
+│  mtproto::Client        (public C++ API)     │
+│    auth_with_bot_token / auth_with_phone     │
+│    on_update / on_auth_state / run / stop    │
+├──────────────────────────────────────────────┤
+│  MtprotoClient          (root Actor)         │
+│    send<T>(function, promise)                │
+│    send_raw_query(query, promise)            │
+├──────────────────────────────────────────────┤
+│  AuthManager · ConfigManager                 │
+│  ConnectionCreator · NetQueryDispatcher      │
+│  StateManager · TempAuthKeyWatchdog          │
+├──────────────────────────────────────────────┤
+│  MTProto transport       (td/mtproto/)       │
+│  TL serialization        (td/tl/)            │
+│  Actor framework         (tdactor/)          │
+│  Utilities               (tdutils/)          │
+│  Network                 (tdnet/)            │
+└──────────────────────────────────────────────┘
+```
 
-See description of our [JSON](#using-json), [C++](#using-cxx), [Java](#using-java) and [.NET](#using-dotnet) interfaces.
-
-See the [td_api.tl](https://github.com/tdlib/td/blob/master/td/generate/scheme/td_api.tl) scheme or the automatically generated [HTML documentation](https://core.telegram.org/tdlib/docs/td__api_8h.html)
-for a list of all available `TDLib` [methods](https://core.telegram.org/tdlib/docs/classtd_1_1td__api_1_1_function.html) and [classes](https://core.telegram.org/tdlib/docs/classtd_1_1td__api_1_1_object.html).
+**Key classes:**
+- `mtproto::Client` — thread-safe public API. Creates a `ConcurrentScheduler`, spawns `MtprotoClient` actor, runs the event loop.
+- `MtprotoClient` — internal root actor. Wires up `Global`, `TdDb`, `NetQueryDispatcher`, `AuthManager`, `ConfigManager`, `ConnectionCreator`.
+- `AuthManager` — handles `auth.importBotAuthorization` (bots) and `auth.sendCode` / `auth.signIn` (phone auth).
 
 <a name="dependencies"></a>
 ## Dependencies
-`TDLib` depends on:
 
-* C++17 compatible compiler (Clang 5.0+, GCC 7.0+, MSVC 19.1+ (Visual Studio 2017.7+), Intel C++ Compiler 19+)
-* OpenSSL
-* zlib
-* gperf (build only)
-* CMake (3.10+, build only)
-* PHP (optional, for documentation generation)
+- C++17 compiler (GCC 7+, Clang 5+, MSVC 2017.7+)
+- OpenSSL
+- zlib
+- gperf (build only)
+- CMake 3.10+
+- PHP (optional, for `SplitSource.php` on low-memory builds)
 
 <a name="building"></a>
 ## Building
 
-The simplest way to build `TDLib` is to use our [TDLib build instructions generator](https://tdlib.github.io/td/build.html).
-You need only to choose your programming language and target operating system to receive complete build instructions.
-
-In general, you need to install all `TDLib` [dependencies](#dependencies), enter directory containing `TDLib` sources and compile them using CMake:
-
-```
-mkdir build
-cd build
+```bash
+mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 cmake --build .
 ```
 
-To build `TDLib` on low memory devices you can run [SplitSource.php](https://github.com/tdlib/td/blob/master/SplitSource.php) script
-before compiling `TDLib` source code and compile only needed targets:
+This builds the core library (`mtproto`), examples (`echo_bot`, `channel_crawler`), and `smoke_test`.
+
+To build only specific targets:
+```bash
+cmake --build . --target mtproto        # library only
+cmake --build . --target echo_bot       # echo bot example
+cmake --build . --target smoke_test     # integration test
 ```
+
+On low-memory machines, split large generated source files first:
+```bash
 php SplitSource.php
-mkdir build
-cd build
+mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . --target tdjson
-cmake --build . --target tdjson_static
-cd ..
-php SplitSource.php --undo
-```
-In our tests clang 6.0 with libc++ required less than 500 MB of RAM per file and GCC 4.9/6.3 used less than 1 GB of RAM per file.
-
-<a name="using-cxx"></a>
-## Using in CMake C++ projects
-For C++ projects that use CMake, the best approach is to build `TDLib` as part of your project or to install it system-wide.
-
-There are several libraries that you could use in your CMake project:
-
-* Td::TdJson, Td::TdJsonStatic — dynamic and static version of a JSON interface. This has a simple C interface, so it can be easily used with any programming language that is able to execute C functions.
-  See [td_json_client](https://core.telegram.org/tdlib/docs/td__json__client_8h.html) documentation for more information.
-* Td::TdStatic — static library with C++ interface for general usage.
-  See [ClientManager](https://core.telegram.org/tdlib/docs/classtd_1_1_client_manager.html) and [Client](https://core.telegram.org/tdlib/docs/classtd_1_1_client.html) documentation for more information.
-
-For example, part of your CMakeLists.txt may look like this:
-```
-add_subdirectory(td)
-target_link_libraries(YourTarget PRIVATE Td::TdStatic)
+cmake --build . --target mtproto
+cd .. && php SplitSource.php --undo
 ```
 
-Or you could install `TDLib` and then reference it in your CMakeLists.txt like this:
+<a name="usage"></a>
+## Usage
+
+### Bot authentication
+
+```cpp
+#include "mtproto/Client.h"
+
+int main() {
+  ::mtproto::Client::Options opts;
+  opts.api_id = 12345;
+  opts.api_hash = "your_api_hash";
+
+  auto client = ::mtproto::Client::create(opts);
+  client->auth_with_bot_token("123456:ABC-DEF...");
+
+  client->on_auth_state([](int state, const td::string &info) {
+    if (state == 2) { /* Authorized */ }
+    if (state == 3) { /* Error: info contains message */ }
+  });
+
+  client->on_update([](td::tl_object_ptr<td::telegram_api::Updates> updates) {
+    // Handle raw MTProto updates
+  });
+
+  client->run();  // blocks until stop()
+}
 ```
-find_package(Td 1.8.62 REQUIRED)
-target_link_libraries(YourTarget PRIVATE Td::TdStatic)
-```
-See [example/cpp/CMakeLists.txt](https://github.com/tdlib/td/blob/master/example/cpp/CMakeLists.txt).
 
-<a name="using-java"></a>
-## Using in Java projects
-`TDLib` provides native Java interface through JNI. To enable it, specify option `-DTD_ENABLE_JNI=ON` to CMake.
+### Phone authentication (interactive)
 
-See [example/java](https://github.com/tdlib/td/tree/master/example/java) for example of using `TDLib` from Java and detailed build and usage instructions.
+```cpp
+auto client = ::mtproto::Client::create(opts);
+client->auth_with_phone("+1234567890");
 
-<a name="using-dotnet"></a>
-## Using in .NET projects
-`TDLib` provides native .NET interface through `C++/CLI` and `C++/CX`. To enable it, specify option `-DTD_ENABLE_DOTNET=ON` or `-DTD_ENABLE_DOTNET=CX` respectively to CMake.
-.NET Core supports `C++/CLI` only since version 3.1 and only on Windows, so if older .NET Core is used or portability is needed, then `TDLib` JSON interface should be used through P/Invoke instead.
+client->on_auth_state([&client](int state, const td::string &info) {
+  if (state == 1) {  // WaitCode
+    std::string code;
+    std::cout << "Enter code: ";
+    std::getline(std::cin, code);
+    client->submit_auth_code(std::move(code));
+  }
+});
 
-See [example/csharp](https://github.com/tdlib/td/tree/master/example/csharp) for example of using `TDLib` from C# and detailed build and usage instructions.
-See [example/uwp](https://github.com/tdlib/td/tree/master/example/uwp) for example of using `TDLib` from C# UWP application and detailed build and usage instructions for Visual Studio Extension "TDLib for Universal Windows Platform".
-
-When `TDLib` is built with `TD_ENABLE_DOTNET` option enabled, `C++` documentation is removed from some files. You need to checkout these files to return `C++` documentation back:
-```
-git checkout td/telegram/Client.h td/telegram/Log.h td/tl/TlObject.h
+client->run();
 ```
 
-<a name="using-json"></a>
-## Using from other programming languages
-`TDLib` provides efficient native C++, Java, and .NET interfaces.
-But for most use cases we suggest to use the JSON interface, which can be easily used with any programming language that is able to execute C functions.
-See [td_json_client](https://core.telegram.org/tdlib/docs/td__json__client_8h.html) documentation for detailed JSON interface description,
-the [td_api.tl](https://github.com/tdlib/td/blob/master/td/generate/scheme/td_api.tl) scheme or the automatically generated [HTML documentation](https://core.telegram.org/tdlib/docs/td__api_8h.html) for a list of
-all available `TDLib` [methods](https://core.telegram.org/tdlib/docs/classtd_1_1td__api_1_1_function.html) and [classes](https://core.telegram.org/tdlib/docs/classtd_1_1td__api_1_1_object.html).
+### Sending raw MTProto queries
 
-`TDLib` JSON interface adheres to semantic versioning and versions with the same major version number are binary and backward compatible, but the underlying `TDLib` API can be different for different minor and even patch versions.
-If you need to support different `TDLib` versions, then you can use a value of the `version` option to find exact `TDLib` version to use appropriate API methods.
+Inside the actor context (e.g. in an `on_update` callback), use `Global` to dispatch queries directly:
 
-See [example/python/tdjson_example.py](https://github.com/tdlib/td/blob/master/example/python/tdjson_example.py) for an example of such usage.
+```cpp
+#include "td/telegram/Global.h"
+#include "td/telegram/net/NetQueryCreator.h"
+#include "td/telegram/net/NetQueryDispatcher.h"
+#include "td/telegram/telegram_api.h"
+
+namespace api = td::telegram_api;
+
+// Build a TL function
+auto req = api::make_object<api::messages_sendMessage>(
+    0, false, false, false, false, false, false, false, false,
+    api::make_object<api::inputPeerUser>(user_id, 0),
+    nullptr, "Hello!", td::Random::secure_int64(),
+    nullptr, std::vector<api::object_ptr<api::MessageEntity>>{},
+    0, 0, nullptr, nullptr, 0, 0, nullptr);
+
+// Create and dispatch the query
+auto query = td::G()->net_query_creator().create(*req);
+td::G()->net_query_dispatcher().dispatch(std::move(query));
+```
+
+### Auth state values
+
+| State | Name | Meaning |
+|-------|------|---------|
+| 0 | WaitPhoneNumber | Waiting for phone number |
+| 1 | WaitCode | Verification code required |
+| 2 | Ok | Authenticated |
+| 3 | Error | Authentication failed (info contains error message) |
+
+<a name="examples"></a>
+## Examples
+
+### echo_bot
+
+Bot that echoes back every incoming private message.
+
+```bash
+API_ID=12345 API_HASH=abc... BOT_TOKEN=123:ABC ./build/bin/echo_bot
+```
+
+Handles `updateShortMessage`, `updateShort`+`updateNewMessage`, and `updates` containers. Replies via `messages.sendMessage`. See [examples/echo_bot.cpp](examples/echo_bot.cpp).
+
+### channel_crawler
+
+Authenticates with a phone number (interactive code entry) and resolves a public channel via `contacts.resolveUsername`.
+
+```bash
+API_ID=12345 API_HASH=abc... PHONE=+1234567890 CHANNEL=durov LIMIT=10 \
+  ./build/bin/channel_crawler
+```
+
+See [examples/channel_crawler.cpp](examples/channel_crawler.cpp).
+
+<a name="updating-the-tl-schema"></a>
+## Updating the TL Schema
+
+When a new Telegram MTProto layer is released, update the TL schema files and rebuild to regenerate the C++ types.
+
+### 1. Download the updated schema
+
+The canonical source for the latest Telegram API schema is [tdesktop](https://github.com/telegramdesktop/tdesktop):
+
+```bash
+curl -L -o td/generate/scheme/telegram_api.tl \
+  https://github.com/telegramdesktop/tdesktop/raw/dev/Telegram/Resources/tl/api.tl
+```
+
+The MTProto protocol schema (`mtproto_api.tl`) changes very rarely and usually does not need updating.
+
+### 2. Rebuild
+
+```bash
+cd build
+cmake ..
+cmake --build .
+```
+
+CMake detects changes to `.tl` files and automatically:
+1. Runs `tl-parser` to compile `.tl` → `.tlo` (binary TL format)
+2. Runs `generate_mtproto` and `generate_common` to produce `telegram_api.h`, `telegram_api_*.cpp`, `mtproto_api.h`, etc.
+3. Rebuilds all dependent targets
+
+### 3. Fix compilation errors
+
+A schema update may introduce new constructors with additional fields. Update any code that constructs these objects (e.g. `messages_sendMessage` arguments may change). The compiler will flag all mismatches.
+
+### Schema files
+
+| File | Purpose |
+|------|---------|
+| `td/generate/scheme/telegram_api.tl` | Telegram API methods and types |
+| `td/generate/scheme/mtproto_api.tl` | MTProto protocol primitives |
+| `td/generate/scheme/secret_api.tl` | Secret chat layer |
+| `td/generate/scheme/e2e_api.tl` | End-to-end encryption types |
+
+Generated C++ code is placed in `td/generate/auto/td/telegram/`.
+
+<a name="project-structure"></a>
+## Project Structure
+
+```
+autoproto/
+├── mtproto/                     # Public C++ API
+│   ├── Client.h                 #   mtproto::Client interface
+│   └── Client.cpp               #   pimpl implementation
+├── td/
+│   ├── telegram/                # Core managers and actors
+│   │   ├── MtprotoClient.h/cpp  #   Root actor (wires MTProto stack)
+│   │   ├── AuthManager.h/cpp    #   Bot + phone authentication
+│   │   ├── ConfigManager.h/cpp  #   DC configuration
+│   │   ├── Global.h             #   Global singleton (G() macro)
+│   │   └── net/                 #   Network layer
+│   │       ├── NetQueryDispatcher.h/cpp
+│   │       ├── NetQueryCreator.h/cpp
+│   │       ├── ConnectionCreator.h/cpp
+│   │       └── Session.h/cpp
+│   ├── mtproto/                 # MTProto protocol implementation
+│   │   ├── Handshake.h/cpp      #   Key exchange (DH)
+│   │   ├── SessionConnection.h  #   Protocol session
+│   │   └── AuthKey.h            #   Auth key management
+│   ├── tl/                      # TL serialization runtime
+│   └── generate/                # Code generation
+│       ├── scheme/              #   .tl schema files
+│       └── auto/                #   generated C++ (build output)
+├── tdactor/                     # Actor framework + scheduler
+├── tdutils/                     # Utilities (logging, crypto, Status, Promise)
+├── tdnet/                       # Network utilities (Socks5, HTTP)
+├── tddb/                        # Database layer (TdDb, SqliteKeyValue)
+├── tde2e/                       # End-to-end encryption
+├── examples/                    # Usage examples
+│   ├── echo_bot.cpp
+│   └── channel_crawler.cpp
+├── test/                        # Tests
+└── benchmark/                   # Benchmarks
+```
+
+### Modules kept from TDLib
+
+| Module | Directory | Purpose |
+|--------|-----------|---------|
+| tdutils | `tdutils/` | Logging, `Slice`, `Status`, `Promise`, `BufferSlice`, crypto helpers |
+| tdactor | `tdactor/` | `Actor`, `ActorOwn<T>`, `ActorId<T>`, `ConcurrentScheduler` |
+| tdnet | `tdnet/` | TCP, TLS, Socks5, HTTP transport |
+| tdtl | `tdtl/` | TL serialization/deserialization runtime |
+| tddb | `tddb/` | SQLite-backed key-value and binlog storage |
+| tde2e | `tde2e/` | End-to-end encryption primitives |
+| MTProto | `td/mtproto/` | Key exchange, encryption, session management |
+| Network | `td/telegram/net/` | Connections, auth keys, query dispatch |
+| Managers | `td/telegram/` | Auth, config, DC management |
+
+### Modules removed from TDLib
+
+All high-level Telegram client logic has been removed: `MessagesManager`, `ContactsManager`, `UpdatesManager`, `StickersManager`, `FileManager`, `StorageManager`, `DownloadManager`, `DialogManager`, and approximately 150 other manager classes. The JSON/C/JNI/CLI client interfaces were also removed. Only the MTProto transport and typed TL API remain.
 
 <a name="license"></a>
 ## License
-`TDLib` is licensed under the terms of the Boost Software License. See [LICENSE_1_0.txt](http://www.boost.org/LICENSE_1_0.txt) for more information.
+
+Licensed under the Boost Software License. See [LICENSE_1_0.txt](LICENSE_1_0.txt).

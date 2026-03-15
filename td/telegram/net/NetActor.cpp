@@ -8,11 +8,11 @@
 
 #include "td/telegram/Global.h"
 #include "td/telegram/net/NetQueryDispatcher.h"
-#include "td/telegram/Td.h"
+#include "td/telegram/MtprotoClient.h"
 
 namespace td {
 
-NetActor::NetActor() : td_(static_cast<Td *>(G()->td().get_actor_unsafe())) {
+NetActor::NetActor() : td_(static_cast<MtprotoClient *>(G()->td().get_actor_unsafe())) {
 }
 
 void NetActor::set_parent(ActorShared<> parent) {

@@ -37,7 +37,7 @@ class ConnectionCreator;
 class NetQueryDispatcher;
 class NetQueryStats;
 class StateManager;
-class Td;
+class MtprotoClient;
 class TempAuthKeyWatchdog;
 
 class Global final : public ActorContext {
@@ -133,10 +133,10 @@ class Global final : public ActorContext {
   ActorId<TempAuthKeyWatchdog> temp_auth_key_watchdog() const;
   void set_temp_auth_key_watchdog(ActorOwn<TempAuthKeyWatchdog> actor);
 
-  ActorId<Td> td() const {
+  ActorId<MtprotoClient> td() const {
     return td_;
   }
-  void set_td(ActorId<Td> td) {
+  void set_td(ActorId<MtprotoClient> td) {
     td_ = td;
   }
 
@@ -250,7 +250,7 @@ class Global final : public ActorContext {
   ActorId<ConfigManager> config_manager_;
   ActorOwn<ConnectionCreator> connection_creator_;
   ActorOwn<TempAuthKeyWatchdog> temp_auth_key_watchdog_;
-  ActorId<Td> td_;
+  ActorId<MtprotoClient> td_;
   ActorOwn<StateManager> state_manager_;
   unique_ptr<TdDb> td_db_;
 

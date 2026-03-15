@@ -8,7 +8,7 @@
 
 #include "td/telegram/AuthManager.h"
 #include "td/telegram/Global.h"
-#include "td/telegram/Td.h"
+#include "td/telegram/MtprotoClient.h"
 #include "td/telegram/telegram_api.h"
 
 #include "td/actor/actor.h"

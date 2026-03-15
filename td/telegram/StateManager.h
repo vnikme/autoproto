@@ -43,12 +43,18 @@ class StateManager final : public mtproto::ConnectionManager {
   explicit StateManager(ActorShared<> parent) : parent_(std::move(parent)) {
   }
 
-  void on_synchronized(bool is_synchronized) {}
-  void on_network_updated() {}
-  void on_network(NetType new_network_type) {}
-  void on_online(bool is_online) {}
-  void on_proxy(bool use_proxy) {}
-  void on_logging_out(bool is_logging_out) {}
+  void on_synchronized(bool is_synchronized) {
+  }
+  void on_network_updated() {
+  }
+  void on_network(NetType new_network_type) {
+  }
+  void on_online(bool is_online) {
+  }
+  void on_proxy(bool use_proxy) {
+  }
+  void on_logging_out(bool is_logging_out) {
+  }
 
   void add_callback(unique_ptr<Callback> net_callback) {
     callbacks_.push_back(std::move(net_callback));
@@ -58,7 +64,8 @@ class StateManager final : public mtproto::ConnectionManager {
     promise.set_value(Unit());
   }
 
-  void close() {}
+  void close() {
+  }
 
  private:
   ActorShared<> parent_;
@@ -69,8 +76,10 @@ class StateManager final : public mtproto::ConnectionManager {
 
   vector<unique_ptr<Callback>> callbacks_;
 
-  void start_up() final {}
-  void loop() final {}
+  void start_up() final {
+  }
+  void loop() final {
+  }
 };
 
 }  // namespace td

@@ -8,7 +8,7 @@
 
 #include "td/telegram/Global.h"
 #include "td/telegram/net/NetQueryDispatcher.h"
-#include "td/telegram/Td.h"
+#include "td/telegram/MtprotoClient.h"
 #include "td/telegram/td_api.h"
 #include "td/telegram/telegram_api.h"
 
@@ -57,7 +57,7 @@ void NetQueryVerifier::verify(NetQueryPtr query, string nonce) {
   queries_.emplace(query_id, std::make_pair(std::move(query), std::move(verification_query)));
 
   send_closure(
-      G()->td(), &Td::send_update,
+      G()->td(), &MtprotoClient::send_update,
       td_api::make_object<td_api::updateApplicationVerificationRequired>(query_id, nonce, cloud_project_number));
 }
 
@@ -80,7 +80,7 @@ void NetQueryVerifier::check_recaptcha(NetQueryPtr query, string action, string 
   queries_.emplace(query_id, std::make_pair(std::move(query), std::move(verification_query)));
 
   send_closure(
-      G()->td(), &Td::send_update,
+      G()->td(), &MtprotoClient::send_update,
       td_api::make_object<td_api::updateApplicationRecaptchaVerificationRequired>(query_id, action, recaptcha_key_id));
 }
 

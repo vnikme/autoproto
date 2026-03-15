@@ -31,8 +31,7 @@ static telegram_api::object_ptr<telegram_api::JSONValue> json_to_tl(const JsonVa
     case JsonValue::Type::Object: {
       vector<telegram_api::object_ptr<telegram_api::jsonObjectValue>> members;
       json_value.get_object().foreach([&](Slice key, const JsonValue &val) {
-        members.push_back(telegram_api::make_object<telegram_api::jsonObjectValue>(
-            key.str(), json_to_tl(val)));
+        members.push_back(telegram_api::make_object<telegram_api::jsonObjectValue>(key.str(), json_to_tl(val)));
       });
       return telegram_api::make_object<telegram_api::jsonObject>(std::move(members));
     }

@@ -17,7 +17,7 @@
 #include "td/telegram/net/PublicRsaKeyWatchdog.h"
 #include "td/telegram/net/SessionMultiProxy.h"
 #include "td/telegram/SequenceDispatcher.h"
-#include "td/telegram/Td.h"
+#include "td/telegram/MtprotoClient.h"
 #include "td/telegram/TdDb.h"
 #include "td/telegram/telegram_api.h"
 
@@ -38,7 +38,7 @@ void NetQueryDispatcher::complete_net_query(NetQueryPtr net_query) {
   auto callback = net_query->move_callback();
   if (callback.empty()) {
     net_query->debug("sent to handler");
-    send_closure_later(G()->td(), &Td::on_result, std::move(net_query));
+    send_closure_later(G()->td(), &MtprotoClient::on_result, std::move(net_query));
   } else {
     net_query->debug("sent to callback", true);
     send_closure_later(std::move(callback), &NetQueryCallback::on_result, std::move(net_query));

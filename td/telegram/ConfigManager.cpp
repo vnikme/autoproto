@@ -319,8 +319,7 @@ Timestamp ConfigManager::load_config_expire_time() {
 }
 
 void ConfigManager::save_config_expire(Timestamp timestamp) {
-  G()->td_db()->get_binlog_pmc()->set("config_expire",
-                                      to_string(static_cast<int>(Clocks::system() + timestamp.in())));
+  G()->td_db()->get_binlog_pmc()->set("config_expire", to_string(static_cast<int>(Clocks::system() + timestamp.in())));
 }
 
 }  // namespace td

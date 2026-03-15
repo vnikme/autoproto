@@ -12,7 +12,7 @@
 #include "td/telegram/net/DcId.h"
 #include "td/telegram/net/NetQueryDispatcher.h"
 #include "td/telegram/net/Session.h"
-#include "td/telegram/Td.h"
+#include "td/telegram/MtprotoClient.h"
 #include "td/telegram/TdDb.h"
 #include "td/telegram/telegram_api.h"
 #include "td/telegram/UniqueId.h"
@@ -75,7 +75,7 @@ class SessionCallback final : public Session::Callback {
       LOG(ERROR) << "Failed to fetch update: " << parser.get_error() << format::as_hex_dump<4>(update.as_slice());
       updates = nullptr;
     }
-    send_closure_later(G()->td(), &Td::on_update, std::move(updates), auth_key_id);
+    send_closure_later(G()->td(), &MtprotoClient::on_update, std::move(updates), auth_key_id);
   }
 
   void on_result(NetQueryPtr query) final {
@@ -237,7 +237,7 @@ void SessionProxy::open_session(bool force) {
     int_dc_id = -int_dc_id;
   }
   if (is_main_ && use_pfs_ && !tmp_auth_key_.empty()) {
-    send_closure_later(G()->td(), &Td::on_update, telegram_api::make_object<telegram_api::updates>(),
+    send_closure_later(G()->td(), &MtprotoClient::on_update, telegram_api::make_object<telegram_api::updates>(),
                        tmp_auth_key_.id());
   }
   session_ = create_actor<Session>(
