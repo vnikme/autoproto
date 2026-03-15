@@ -498,6 +498,14 @@ add_library(tdcore STATIC ${TDLIB_SOURCE})
 target_include_directories(tdcore PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<BUILD_INTERFACE:${TL_TD_AUTO_INCLUDE_DIR}>)
 target_link_libraries(tdcore PUBLIC tdapi tdnet tddb tdactor tde2e tdutils PRIVATE tdmtproto)
 
+# mtproto - public API wrapper
+add_library(mtproto STATIC
+  mtproto/Client.cpp
+  mtproto/Client.h
+)
+target_include_directories(mtproto PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+target_link_libraries(mtproto PUBLIC tdcore)
+
 set(TD_CORE_PART_TARGETS)
 
 # Convenience target: regenerate all TL bindings from schema files
