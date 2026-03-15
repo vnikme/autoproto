@@ -4,12 +4,13 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
+// Stripped ConfigManager – only DC config / options management for MTProto layer.
+//
 #pragma once
 
 #include "td/telegram/net/DcId.h"
 #include "td/telegram/net/DcOptions.h"
 #include "td/telegram/net/NetQuery.h"
-#include "td/telegram/td_api.h"
 #include "td/telegram/telegram_api.h"
 
 #include "td/actor/actor.h"
@@ -55,6 +56,7 @@ ActorOwn<> get_simple_config_firebase_firestore(Promise<SimpleConfigResult> prom
                                                 Slice domain_name, bool is_test, int32 scheduler_id);
 
 class ConfigRecoverer;
+
 class ConfigManager final : public NetQueryCallback {
  public:
   explicit ConfigManager(ActorShared<> parent);
@@ -63,32 +65,9 @@ class ConfigManager final : public NetQueryCallback {
 
   void lazy_request_config();
 
-  void reget_config(Promise<Unit> &&promise);
-
-  void get_app_config(Promise<td_api::object_ptr<td_api::JsonValue>> &&promise);
-
-  void reget_app_config(Promise<Unit> &&promise);
-
-  void get_content_settings(Promise<Unit> &&promise);
-
-  void set_content_settings(bool ignore_sensitive_content_restrictions, Promise<Unit> &&promise);
-
   void on_dc_options_update(DcOptions dc_options);
 
  private:
-  struct AppConfig {
-    static constexpr int32 CURRENT_VERSION = 115;
-    int32 version_ = 0;
-    int32 hash_ = 0;
-    telegram_api::object_ptr<telegram_api::JSONValue> config_;
-
-    template <class StorerT>
-    void store(StorerT &storer) const;
-
-    template <class ParserT>
-    void parse(ParserT &parser);
-  };
-
   ActorShared<> parent_;
   int32 config_sent_cnt_{0};
   bool reopen_sessions_after_get_config_{false};
@@ -97,18 +76,6 @@ class ConfigManager final : public NetQueryCallback {
   Timestamp expire_time_;
 
   FloodControlStrict lazy_request_flood_control_;
-
-  vector<Promise<Unit>> reget_config_queries_;
-
-  vector<Promise<td_api::object_ptr<td_api::JsonValue>>> get_app_config_queries_;
-  vector<Promise<Unit>> reget_app_config_queries_;
-
-  vector<Promise<Unit>> get_content_settings_queries_;
-  vector<Promise<Unit>> set_content_settings_queries_[2];
-  bool is_set_content_settings_request_sent_ = false;
-  bool last_set_content_settings_ = false;
-
-  AppConfig app_config_;
 
   static constexpr uint64 REFCNT_TOKEN = std::numeric_limits<uint64>::max() - 2;
 
@@ -123,16 +90,11 @@ class ConfigManager final : public NetQueryCallback {
   void request_config_from_dc_impl(DcId dc_id, bool reopen_sessions);
   void process_config(tl_object_ptr<telegram_api::config> config);
 
-  void try_request_app_config();
-
-  void process_app_config(telegram_api::object_ptr<telegram_api::JSONValue> &config);
-
-  void do_set_ignore_sensitive_content_restrictions(bool ignore_sensitive_content_restrictions);
+  static void save_dc_options_update(const DcOptions &dc_options);
+  static DcOptions load_dc_options_update();
 
   static Timestamp load_config_expire_time();
   static void save_config_expire(Timestamp timestamp);
-  static void save_dc_options_update(const DcOptions &dc_options);
-  static DcOptions load_dc_options_update();
 
   ActorShared<> create_reference();
 };

@@ -10,6 +10,7 @@
 #include "td/telegram/net/DcId.h"
 #include "td/telegram/net/NetQuery.h"
 #include "td/telegram/net/NetQueryStats.h"
+#include "td/telegram/telegram_api.h"
 #include "td/telegram/UniqueId.h"
 
 #include "td/utils/common.h"
@@ -18,10 +19,6 @@
 #include <memory>
 
 namespace td {
-
-namespace telegram_api {
-class Function;
-}  // namespace telegram_api
 
 class NetQueryCreator {
  public:

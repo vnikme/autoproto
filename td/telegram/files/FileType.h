@@ -45,34 +45,119 @@ enum class FileType : int32 {
   None
 };
 
-enum class FileDirType : int8 { Secure, Common };
-
 constexpr int32 MAX_FILE_TYPE = static_cast<int32>(FileType::Size);
 
-FileType get_file_type(const td_api::FileType &file_type);
+inline FileType get_main_file_type(FileType file_type) {
+  switch (file_type) {
+    case FileType::EncryptedThumbnail:
+      return FileType::Thumbnail;
+    case FileType::DocumentAsFile:
+      return FileType::Document;
+    case FileType::SelfDestructingPhoto:
+      return FileType::Photo;
+    case FileType::SelfDestructingVideo:
+      return FileType::Video;
+    case FileType::SelfDestructingVideoNote:
+      return FileType::VideoNote;
+    case FileType::SelfDestructingVoiceNote:
+      return FileType::VoiceNote;
+    default:
+      return file_type;
+  }
+}
 
-tl_object_ptr<td_api::FileType> get_file_type_object(FileType file_type);
+inline CSlice get_file_type_unique_name(FileType file_type) {
+  switch (file_type) {
+    case FileType::Thumbnail:
+      return CSlice("thumbnails");
+    case FileType::ProfilePhoto:
+      return CSlice("profile_photos");
+    case FileType::Photo:
+      return CSlice("photos");
+    case FileType::VoiceNote:
+      return CSlice("voice");
+    case FileType::Video:
+      return CSlice("videos");
+    case FileType::Document:
+      return CSlice("documents");
+    case FileType::Encrypted:
+      return CSlice("secret");
+    case FileType::Temp:
+      return CSlice("temp");
+    case FileType::Sticker:
+      return CSlice("stickers");
+    case FileType::Audio:
+      return CSlice("music");
+    case FileType::Animation:
+      return CSlice("animations");
+    case FileType::EncryptedThumbnail:
+      return CSlice("secret_thumbnails");
+    case FileType::Wallpaper:
+      return CSlice("wallpapers");
+    case FileType::VideoNote:
+      return CSlice("video_notes");
+    case FileType::SecureDecrypted:
+      return CSlice("passport");
+    case FileType::SecureEncrypted:
+      return CSlice("passport_encrypted");
+    case FileType::Background:
+      return CSlice("backgrounds");
+    case FileType::DocumentAsFile:
+      return CSlice("documents_as_file");
+    case FileType::Ringtone:
+      return CSlice("ringtones");
+    case FileType::CallLog:
+      return CSlice("call_logs");
+    case FileType::PhotoStory:
+      return CSlice("stories_photo");
+    case FileType::VideoStory:
+      return CSlice("stories_video");
+    case FileType::SelfDestructingPhoto:
+      return CSlice("self_destructing_photos");
+    case FileType::SelfDestructingVideo:
+      return CSlice("self_destructing_videos");
+    case FileType::SelfDestructingVideoNote:
+      return CSlice("self_destructing_video_notes");
+    case FileType::SelfDestructingVoiceNote:
+      return CSlice("self_destructing_voice");
+    default:
+      return CSlice("unknown");
+  }
+}
 
-FileType get_main_file_type(FileType file_type);
+inline StringBuilder &operator<<(StringBuilder &string_builder, FileType file_type) {
+  return string_builder << get_file_type_unique_name(file_type);
+}
 
-CSlice get_file_type_name(FileType file_type);
-
-CSlice get_file_type_unique_name(FileType file_type);
-
-enum class FileTypeClass : int32 { Photo, Document, Secure, Encrypted, Temp };
-
-FileTypeClass get_file_type_class(FileType file_type);
-
-bool is_document_file_type(FileType file_type);
-
-StringBuilder &operator<<(StringBuilder &string_builder, FileType file_type);
-
-FileDirType get_file_dir_type(FileType file_type);
-
-bool is_file_big(FileType file_type, int64 expected_size);
-
-bool can_reuse_remote_file(FileType file_type);
-
-FileType guess_file_type_by_path(Slice file_path, FileType default_file_type = FileType::None);
+inline td_api::object_ptr<td_api::FileType> get_file_type_object(FileType file_type) {
+  switch (file_type) {
+    case FileType::Animation:
+      return td_api::make_object<td_api::fileTypeAnimation>();
+    case FileType::Audio:
+      return td_api::make_object<td_api::fileTypeAudio>();
+    case FileType::Document:
+    case FileType::DocumentAsFile:
+      return td_api::make_object<td_api::fileTypeDocument>();
+    case FileType::Photo:
+    case FileType::ProfilePhoto:
+    case FileType::SelfDestructingPhoto:
+      return td_api::make_object<td_api::fileTypePhoto>();
+    case FileType::Sticker:
+      return td_api::make_object<td_api::fileTypeSticker>();
+    case FileType::Video:
+    case FileType::SelfDestructingVideo:
+      return td_api::make_object<td_api::fileTypeVideo>();
+    case FileType::VideoNote:
+    case FileType::SelfDestructingVideoNote:
+      return td_api::make_object<td_api::fileTypeVideoNote>();
+    case FileType::VoiceNote:
+    case FileType::SelfDestructingVoiceNote:
+      return td_api::make_object<td_api::fileTypeVoiceNote>();
+    case FileType::Ringtone:
+      return td_api::make_object<td_api::fileTypeNotificationSound>();
+    default:
+      return td_api::make_object<td_api::fileTypeNone>();
+  }
+}
 
 }  // namespace td

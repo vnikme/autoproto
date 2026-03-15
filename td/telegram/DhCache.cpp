@@ -6,13 +6,23 @@
 //
 #include "td/telegram/DhCache.h"
 
-#include "td/telegram/Global.h"
-#include "td/telegram/TdDb.h"
-
 #include "td/utils/common.h"
+#include "td/utils/FlatHashMap.h"
 #include "td/utils/misc.h"
 
+#include <mutex>
+
 namespace td {
+
+static std::mutex &dh_cache_mutex() {
+  static std::mutex mu;
+  return mu;
+}
+
+static FlatHashMap<string, string> &dh_cache_map() {
+  static FlatHashMap<string, string> m;
+  return m;
+}
 
 static string good_prime_key(Slice prime_str) {
   string key("good_prime:");
@@ -33,23 +43,27 @@ int DhCache::is_good_prime(Slice prime_str) const {
     return 1;
   }
 
-  string value = G()->td_db()->get_binlog_pmc()->get(good_prime_key(prime_str));
-  if (value == "good") {
-    return 1;
+  std::lock_guard<std::mutex> guard(dh_cache_mutex());
+  auto it = dh_cache_map().find(good_prime_key(prime_str));
+  if (it != dh_cache_map().end()) {
+    if (it->second == "good") {
+      return 1;
+    }
+    if (it->second == "bad") {
+      return 0;
+    }
   }
-  if (value == "bad") {
-    return 0;
-  }
-  CHECK(value.empty());
   return -1;
 }
 
 void DhCache::add_good_prime(Slice prime_str) const {
-  G()->td_db()->get_binlog_pmc()->set(good_prime_key(prime_str), "good");
+  std::lock_guard<std::mutex> guard(dh_cache_mutex());
+  dh_cache_map()[good_prime_key(prime_str)] = "good";
 }
 
 void DhCache::add_bad_prime(Slice prime_str) const {
-  G()->td_db()->get_binlog_pmc()->set(good_prime_key(prime_str), "bad");
+  std::lock_guard<std::mutex> guard(dh_cache_mutex());
+  dh_cache_map()[good_prime_key(prime_str)] = "bad";
 }
 
 }  // namespace td

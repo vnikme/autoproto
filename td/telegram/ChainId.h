@@ -6,17 +6,6 @@
 //
 #pragma once
 
-#include "td/telegram/ChannelId.h"
-#include "td/telegram/ChatId.h"
-#include "td/telegram/DialogId.h"
-#include "td/telegram/FolderId.h"
-#include "td/telegram/InputGroupCallId.h"
-#include "td/telegram/MessageContentType.h"
-#include "td/telegram/MessageFullId.h"
-#include "td/telegram/PollId.h"
-#include "td/telegram/StoryFullId.h"
-#include "td/telegram/UserId.h"
-
 #include "td/utils/common.h"
 #include "td/utils/HashTableUtils.h"
 
@@ -26,44 +15,26 @@ class ChainId {
   uint64 id = 0;
 
  public:
-  ChainId(ChannelId channel_id) : ChainId(DialogId(channel_id)) {
-  }
-
-  ChainId(ChatId chat_id) : ChainId(DialogId(chat_id)) {
-  }
-
-  ChainId(DialogId dialog_id, MessageContentType message_content_type)
-      : id((static_cast<uint64>(dialog_id.get()) << 10) + get_message_content_chain_id(message_content_type)) {
-  }
-
-  ChainId(DialogId dialog_id) : id((static_cast<uint64>(dialog_id.get()) << 10) + 10) {
-  }
-
-  ChainId(InputGroupCallId input_group_call_id) : id(input_group_call_id.get_hash()) {
-  }
-
-  ChainId(MessageFullId message_full_id) : ChainId(message_full_id.get_dialog_id()) {
-    id += static_cast<uint64>(message_full_id.get_message_id().get()) << 10;
-  }
-
-  ChainId(FolderId folder_id) : id((static_cast<uint64>(folder_id.get() + (1 << 30)) << 10)) {
-  }
-
-  ChainId(PollId poll_id) : id(static_cast<uint64>(poll_id.get())) {
-  }
-
-  ChainId(const string &str) : id(Hash<string>()(str)) {
-  }
-
-  ChainId(UserId user_id) : ChainId(DialogId(user_id)) {
-  }
-
-  ChainId(StoryFullId story_full_id) : ChainId(story_full_id.get_dialog_id()) {
-    id += static_cast<uint64>(story_full_id.get_story_id().get()) << 10;
+  ChainId() = default;
+  explicit ChainId(uint64 chain_id) : id(chain_id) {
   }
 
   uint64 get() const {
     return id;
+  }
+
+  bool operator==(const ChainId &other) const {
+    return id == other.id;
+  }
+
+  bool operator!=(const ChainId &other) const {
+    return id != other.id;
+  }
+};
+
+struct ChainIdHash {
+  uint32 operator()(ChainId chain_id) const {
+    return Hash<uint64>()(chain_id.get());
   }
 };
 

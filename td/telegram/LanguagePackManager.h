@@ -6,21 +6,14 @@
 //
 #pragma once
 
-#include "td/mtproto/DhCallback.h"
-
 #include "td/utils/Slice.h"
 
 namespace td {
 
-class DhCache final : public mtproto::DhCallback {
+class LanguagePackManager {
  public:
-  int is_good_prime(Slice prime_str) const final;
-  void add_good_prime(Slice prime_str) const final;
-  void add_bad_prime(Slice prime_str) const final;
-
-  static mtproto::DhCallback *instance() {
-    static DhCache res;
-    return &res;
+  static bool is_custom_language_code(Slice language_code) {
+    return !language_code.empty() && language_code[0] == 'X';
   }
 };
 

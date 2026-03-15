@@ -6,14 +6,10 @@
 //
 #pragma once
 
-#include "td/telegram/td_api.h"
-
 #include "td/utils/common.h"
 
 namespace td {
 
 enum class ConnectionState : int32 { WaitingForNetwork, ConnectingToProxy, Connecting, Updating, Ready, Empty };
-
-td_api::object_ptr<td_api::updateConnectionState> get_update_connection_state_object(ConnectionState state);
 
 }  // namespace td

@@ -13,7 +13,6 @@
 #include "td/telegram/net/NetQueryDispatcher.h"
 #include "td/telegram/net/NetType.h"
 #include "td/telegram/net/PublicRsaKeySharedMain.h"
-#include "td/telegram/PromoDataManager.h"
 #include "td/telegram/StateManager.h"
 #include "td/telegram/TdDb.h"
 
@@ -539,8 +538,6 @@ void ConnectionCreator::enable_proxy_impl(int32 proxy_id) {
 
 void ConnectionCreator::disable_proxy_impl() {
   if (active_proxy_id_ == 0) {
-    send_closure(G()->promo_data_manager(), &PromoDataManager::remove_sponsored_dialog);
-    send_closure(G()->promo_data_manager(), &PromoDataManager::reload_promo_data);
     return;
   }
   CHECK(proxies_.count(active_proxy_id_) == 1);
@@ -571,11 +568,6 @@ void ConnectionCreator::on_proxy_changed(bool from_db) {
   resolve_proxy_query_token_ = 0;
   resolve_proxy_timestamp_ = Timestamp();
   proxy_ip_address_ = IPAddress();
-
-  if (active_proxy_id_ == 0 || !from_db) {
-    send_closure(G()->promo_data_manager(), &PromoDataManager::remove_sponsored_dialog);
-  }
-  send_closure(G()->promo_data_manager(), &PromoDataManager::reload_promo_data);
 
   loop();
 }

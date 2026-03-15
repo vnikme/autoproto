@@ -22,7 +22,6 @@ class UniqueId {
     return next(type, 0);
   }
   static uint64 next(Type type, uint8 key) {
-    // TODO: this is VERY ineffective
     static std::atomic<uint64> current_id{1};
     return ((current_id.fetch_add(1, std::memory_order_relaxed)) << 16) | (static_cast<uint64>(type) << 8) | key;
   }
