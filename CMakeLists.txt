@@ -500,6 +500,14 @@ target_link_libraries(tdcore PUBLIC tdapi tdnet tddb tdactor tde2e tdutils PRIVA
 
 set(TD_CORE_PART_TARGETS)
 
+# Convenience target: regenerate all TL bindings from schema files
+if (NOT CMAKE_CROSSCOMPILING)
+  add_custom_target(generate_tl
+    DEPENDS tl_generate_tlo tl_generate_mtproto tl_generate_common
+    COMMENT "Regenerating all TL bindings from schema files"
+  )
+endif()
+
 if (NOT CMAKE_CROSSCOMPILING)
   add_dependencies(tdcore tl_generate_common)
   if (TD_ENABLE_JNI)
