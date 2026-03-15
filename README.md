@@ -3,6 +3,7 @@
 A stripped-down C++ MTProto library derived from [TDLib](https://github.com/tdlib/td). Provides direct access to the Telegram MTProto protocol and TL-serialized API without TDLib's high-level abstractions (UI state management, message database, file manager, etc.).
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Dependencies](#dependencies)
@@ -14,6 +15,7 @@ A stripped-down C++ MTProto library derived from [TDLib](https://github.com/tdli
 - [License](#license)
 
 <a name="overview"></a>
+
 ## Overview
 
 autoproto keeps TDLib's battle-tested networking, cryptography, and actor infrastructure while removing the high-level Telegram client logic. What remains is a typed C++ interface to the raw MTProto protocol:
@@ -27,6 +29,7 @@ autoproto keeps TDLib's battle-tested networking, cryptography, and actor infras
 You work directly with `telegram_api::` types (e.g. `messages_sendMessage`, `updateNewMessage`) rather than TDLib's `td_api::` wrappers.
 
 <a name="architecture"></a>
+
 ## Architecture
 
 ```
@@ -52,11 +55,13 @@ You work directly with `telegram_api::` types (e.g. `messages_sendMessage`, `upd
 ```
 
 **Key classes:**
+
 - `mtproto::Client` — thread-safe public API. Creates a `ConcurrentScheduler`, spawns `MtprotoClient` actor, runs the event loop.
 - `MtprotoClient` — internal root actor. Wires up `Global`, `TdDb`, `NetQueryDispatcher`, `AuthManager`, `ConfigManager`, `ConnectionCreator`.
 - `AuthManager` — handles `auth.importBotAuthorization` (bots) and `auth.sendCode` / `auth.signIn` (phone auth).
 
 <a name="dependencies"></a>
+
 ## Dependencies
 
 - C++17 compiler (GCC 7+, Clang 5+, MSVC 2017.7+)
@@ -67,6 +72,7 @@ You work directly with `telegram_api::` types (e.g. `messages_sendMessage`, `upd
 - PHP (optional, for `SplitSource.php` on low-memory builds)
 
 <a name="building"></a>
+
 ## Building
 
 ```bash
@@ -78,6 +84,7 @@ cmake --build .
 This builds the core library (`mtproto`), examples (`echo_bot`, `channel_crawler`), and `smoke_test`.
 
 To build only specific targets:
+
 ```bash
 cmake --build . --target mtproto        # library only
 cmake --build . --target echo_bot       # echo bot example
@@ -85,6 +92,7 @@ cmake --build . --target smoke_test     # integration test
 ```
 
 On low-memory machines, split large generated source files first:
+
 ```bash
 php SplitSource.php
 mkdir build && cd build
@@ -94,6 +102,7 @@ cd .. && php SplitSource.php --undo
 ```
 
 <a name="usage"></a>
+
 ## Usage
 
 ### Bot authentication
@@ -167,14 +176,15 @@ td::G()->net_query_dispatcher().dispatch(std::move(query));
 
 ### Auth state values
 
-| State | Name | Meaning |
-|-------|------|---------|
-| 0 | WaitPhoneNumber | Waiting for phone number |
-| 1 | WaitCode | Verification code required |
-| 2 | Ok | Authenticated |
-| 3 | Error | Authentication failed (info contains error message) |
+| State | Name            | Meaning                                             |
+| ----- | --------------- | --------------------------------------------------- |
+| 0     | WaitPhoneNumber | Waiting for phone number                            |
+| 1     | WaitCode        | Verification code required                          |
+| 2     | Ok              | Authenticated                                       |
+| 3     | Error           | Authentication failed (info contains error message) |
 
 <a name="examples"></a>
+
 ## Examples
 
 ### echo_bot
@@ -199,6 +209,7 @@ API_ID=12345 API_HASH=abc... PHONE=+1234567890 CHANNEL=durov LIMIT=10 \
 See [examples/channel_crawler.cpp](examples/channel_crawler.cpp).
 
 <a name="updating-the-tl-schema"></a>
+
 ## Updating the TL Schema
 
 When a new Telegram MTProto layer is released, update the TL schema files and rebuild to regenerate the C++ types.
@@ -223,6 +234,7 @@ cmake --build .
 ```
 
 CMake detects changes to `.tl` files and automatically:
+
 1. Runs `tl-parser` to compile `.tl` → `.tlo` (binary TL format)
 2. Runs `generate_mtproto` and `generate_common` to produce `telegram_api.h`, `telegram_api_*.cpp`, `mtproto_api.h`, etc.
 3. Rebuilds all dependent targets
@@ -233,16 +245,17 @@ A schema update may introduce new constructors with additional fields. Update an
 
 ### Schema files
 
-| File | Purpose |
-|------|---------|
+| File                                 | Purpose                        |
+| ------------------------------------ | ------------------------------ |
 | `td/generate/scheme/telegram_api.tl` | Telegram API methods and types |
-| `td/generate/scheme/mtproto_api.tl` | MTProto protocol primitives |
-| `td/generate/scheme/secret_api.tl` | Secret chat layer |
-| `td/generate/scheme/e2e_api.tl` | End-to-end encryption types |
+| `td/generate/scheme/mtproto_api.tl`  | MTProto protocol primitives    |
+| `td/generate/scheme/secret_api.tl`   | Secret chat layer              |
+| `td/generate/scheme/e2e_api.tl`      | End-to-end encryption types    |
 
 Generated C++ code is placed in `td/generate/auto/td/telegram/`.
 
 <a name="project-structure"></a>
+
 ## Project Structure
 
 ```
@@ -281,21 +294,22 @@ autoproto/
 
 ### Modules kept from TDLib
 
-| Module | Directory | Purpose |
-|--------|-----------|---------|
-| tdutils | `tdutils/` | Logging, `Slice`, `Status`, `Promise`, `BufferSlice`, crypto helpers |
-| tdactor | `tdactor/` | `Actor`, `ActorOwn<T>`, `ActorId<T>`, `ConcurrentScheduler` |
-| tdnet | `tdnet/` | TCP, TLS, Socks5, HTTP transport |
-| tdtl | `tdtl/` | TL serialization/deserialization runtime |
-| MTProto | `td/mtproto/` | Key exchange, encryption, session management |
-| Network | `td/telegram/net/` | Connections, auth keys, query dispatch |
-| Managers | `td/telegram/` | Auth, config, DC management |
+| Module   | Directory          | Purpose                                                              |
+| -------- | ------------------ | -------------------------------------------------------------------- |
+| tdutils  | `tdutils/`         | Logging, `Slice`, `Status`, `Promise`, `BufferSlice`, crypto helpers |
+| tdactor  | `tdactor/`         | `Actor`, `ActorOwn<T>`, `ActorId<T>`, `ConcurrentScheduler`          |
+| tdnet    | `tdnet/`           | TCP, TLS, Socks5, HTTP transport                                     |
+| tdtl     | `tdtl/`            | TL serialization/deserialization runtime                             |
+| MTProto  | `td/mtproto/`      | Key exchange, encryption, session management                         |
+| Network  | `td/telegram/net/` | Connections, auth keys, query dispatch                               |
+| Managers | `td/telegram/`     | Auth, config, DC management                                          |
 
 ### Modules removed from TDLib
 
 All high-level Telegram client logic has been removed: `MessagesManager`, `ContactsManager`, `UpdatesManager`, `StickersManager`, `FileManager`, `StorageManager`, `DownloadManager`, `DialogManager`, and approximately 150 other manager classes. The JSON/C/JNI/CLI client interfaces were also removed. Only the MTProto transport and typed TL API remain.
 
 <a name="license"></a>
+
 ## License
 
 Licensed under the Boost Software License. See [LICENSE_1_0.txt](LICENSE_1_0.txt).

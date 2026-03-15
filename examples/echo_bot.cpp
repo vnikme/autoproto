@@ -88,30 +88,30 @@ int main() {
       auto peer = api::make_object<api::inputPeerUser>(user_id, 0);
       auto random_id = Random::secure_int64();
 
-      auto send_msg = api::make_object<api::messages_sendMessage>(
-          0,           // flags
-          false,       // no_webpage
-          false,       // silent
-          false,       // background
-          false,       // clear_draft
-          false,       // noforwards
-          false,       // update_stickersets_order
-          false,       // invert_media
-          false,       // allow_paid_floodskip
-          std::move(peer),     // peer
-          nullptr,             // reply_to
-          text,                // message (echo the same text)
-          random_id,           // random_id
-          nullptr,             // reply_markup
-          std::vector<api::object_ptr<api::MessageEntity>>{},  // entities
-          0,           // schedule_date
-          0,           // schedule_repeat_period
-          nullptr,     // send_as
-          nullptr,     // quick_reply_shortcut
-          0,           // effect
-          0,           // allow_paid_stars
-          nullptr      // suggested_post
-      );
+      auto send_msg =
+          api::make_object<api::messages_sendMessage>(0,                // flags
+                                                      false,            // no_webpage
+                                                      false,            // silent
+                                                      false,            // background
+                                                      false,            // clear_draft
+                                                      false,            // noforwards
+                                                      false,            // update_stickersets_order
+                                                      false,            // invert_media
+                                                      false,            // allow_paid_floodskip
+                                                      std::move(peer),  // peer
+                                                      nullptr,          // reply_to
+                                                      text,             // message (echo the same text)
+                                                      random_id,        // random_id
+                                                      nullptr,          // reply_markup
+                                                      std::vector<api::object_ptr<api::MessageEntity>>{},  // entities
+                                                      0,        // schedule_date
+                                                      0,        // schedule_repeat_period
+                                                      nullptr,  // send_as
+                                                      nullptr,  // quick_reply_shortcut
+                                                      0,        // effect
+                                                      0,        // allow_paid_stars
+                                                      nullptr   // suggested_post
+          );
 
       // Dispatch via Global — we're inside the actor context here
       auto query = G()->net_query_creator().create(*send_msg);

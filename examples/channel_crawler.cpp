@@ -50,8 +50,8 @@ static void print_messages(const std::vector<api::object_ptr<api::Message>> &mes
     }
     if (msg->get_id() == api::message::ID) {
       auto *m = static_cast<const api::message *>(msg.get());
-      std::cout << "  [" << m->id_ << "] date=" << m->date_ << " from=" << peer_id(m->from_id_) << "  "
-                << m->message_ << std::endl;
+      std::cout << "  [" << m->id_ << "] date=" << m->date_ << " from=" << peer_id(m->from_id_) << "  " << m->message_
+                << std::endl;
     } else if (msg->get_id() == api::messageService::ID) {
       auto *m = static_cast<const api::messageService *>(msg.get());
       std::cout << "  [" << m->id_ << "] (service message)" << std::endl;
@@ -60,64 +60,62 @@ static void print_messages(const std::vector<api::object_ptr<api::Message>> &mes
 }
 
 static void fetch_channel_diff(MtprotoClient *mc, int64 channel_id, int64 access_hash, int32 limit,
-                                ::mtproto::Client *client) {
+                               ::mtproto::Client *client) {
   auto input_channel = api::make_object<api::inputChannel>(channel_id, access_hash);
   auto filter = api::make_object<api::channelMessagesFilterEmpty>();
 
-  auto req = api::make_object<api::updates_getChannelDifference>(
-      0,                        // flags (force=false)
-      false,                    // force
-      std::move(input_channel), // channel
-      std::move(filter),        // filter
-      0,                        // pts (start from beginning)
-      limit                     // limit
+  auto req = api::make_object<api::updates_getChannelDifference>(0,                         // flags (force=false)
+                                                                 false,                     // force
+                                                                 std::move(input_channel),  // channel
+                                                                 std::move(filter),         // filter
+                                                                 0,     // pts (start from beginning)
+                                                                 limit  // limit
   );
 
-  mc->send(
-      std::move(req),
-      PromiseCreator::lambda(
-          [client](Result<api::object_ptr<api::updates_ChannelDifference>> r_result) {
-            if (r_result.is_error()) {
-              std::cerr << "[crawl] getChannelDifference error: " << r_result.error().message().str() << std::endl;
-              client->stop();
-              return;
-            }
-            auto result = r_result.move_as_ok();
+  mc->send(std::move(req),
+           PromiseCreator::lambda([client](Result<api::object_ptr<api::updates_ChannelDifference>> r_result) {
+             if (r_result.is_error()) {
+               std::cerr << "[crawl] getChannelDifference error: " << r_result.error().message().str() << std::endl;
+               client->stop();
+               return;
+             }
+             auto result = r_result.move_as_ok();
 
-            switch (result->get_id()) {
-              case api::updates_channelDifference::ID: {
-                auto *diff = static_cast<api::updates_channelDifference *>(result.get());
-                std::cout << "\n=== channelDifference: " << diff->new_messages_.size() << " new messages, "
-                          << diff->other_updates_.size() << " other updates ===" << std::endl;
-                print_messages(diff->new_messages_);
-                std::cout << "new_pts=" << diff->pts_ << "  final=" << diff->final_ << std::endl;
-                break;
-              }
-              case api::updates_channelDifferenceTooLong::ID: {
-                auto *diff = static_cast<api::updates_channelDifferenceTooLong *>(result.get());
-                int32 pts = 0;
-                if (diff->dialog_ && diff->dialog_->get_id() == api::dialog::ID) {
-                  pts = static_cast<api::dialog *>(diff->dialog_.get())->pts_;
-                }
-                std::cout << "\n=== channelDifferenceTooLong: " << diff->messages_.size()
-                          << " messages, pts=" << pts << " ===" << std::endl;
-                std::cerr << "[crawl] Warning: difference too long, channel history was truncated" << std::endl;
-                print_messages(diff->messages_);
-                break;
-              }
-              case api::updates_channelDifferenceEmpty::ID: {
-                auto *diff = static_cast<api::updates_channelDifferenceEmpty *>(result.get());
-                std::cout << "\n=== channelDifferenceEmpty: no new updates (pts=" << diff->pts_ << ") ===" << std::endl;
-                break;
-              }
-              default:
-                std::cerr << "[crawl] Unknown channelDifference response type" << std::endl;
-                break;
-            }
+             switch (result->get_id()) {
+               case api::updates_channelDifference::ID: {
+                 auto *diff = static_cast<api::updates_channelDifference *>(result.get());
+                 std::cout << "\n=== channelDifference: " << diff->new_messages_.size() << " new messages, "
+                           << diff->other_updates_.size() << " other updates ===" << std::endl;
+                 print_messages(diff->new_messages_);
+                 std::cout << "new_pts=" << diff->pts_ << "  final=" << diff->final_ << std::endl;
+                 break;
+               }
+               case api::updates_channelDifferenceTooLong::ID: {
+                 auto *diff = static_cast<api::updates_channelDifferenceTooLong *>(result.get());
+                 int32 pts = 0;
+                 if (diff->dialog_ && diff->dialog_->get_id() == api::dialog::ID) {
+                   pts = static_cast<api::dialog *>(diff->dialog_.get())->pts_;
+                 }
+                 std::cout << "\n=== channelDifferenceTooLong: " << diff->messages_.size() << " messages, pts=" << pts
+                           << " ===" << std::endl;
+                 std::cerr << "[crawl] Warning: difference too long, channel history was truncated" << std::endl;
+                 print_messages(diff->messages_);
+                 break;
+               }
+               case api::updates_channelDifferenceEmpty::ID: {
+                 auto *diff = static_cast<api::updates_channelDifferenceEmpty *>(result.get());
+                 std::cout << "\n=== channelDifferenceEmpty: no new updates (pts=" << diff->pts_
+                           << ") ===" << std::endl;
+                 break;
+               }
+               default:
+                 std::cerr << "[crawl] Unknown channelDifference response type" << std::endl;
+                 break;
+             }
 
-            std::cout << "\nDone." << std::endl;
-            client->stop();
-          }));
+             std::cout << "\nDone." << std::endl;
+             client->stop();
+           }));
 }
 
 int main() {
