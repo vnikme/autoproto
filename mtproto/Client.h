@@ -49,6 +49,9 @@ class Client {
   // Create a new client instance
   static std::unique_ptr<Client> create(Options options);
 
+  // Create a client restoring from a previous session
+  static std::unique_ptr<Client> create(Options options, string session_data);
+
   ~Client();
   Client(const Client &) = delete;
   Client &operator=(const Client &) = delete;
@@ -61,6 +64,9 @@ class Client {
 
   // Submit verification code (thread-safe, call from auth state callback)
   void submit_auth_code(string code);
+
+  // Export current session state as an opaque base64 string
+  string export_session();
 
   // Set handler for incoming server updates
   void on_update(std::function<void(tl_object_ptr<td::telegram_api::Updates>)> handler);

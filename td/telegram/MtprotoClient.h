@@ -61,6 +61,7 @@ class MtprotoClient final : public Actor {
     string language_code = "en";
     string bot_token;     // if non-empty, authenticate as bot on start
     string phone_number;  // if non-empty, start phone auth on start
+    string session_data;  // if non-empty, restore session from this base64 string
   };
 
   explicit MtprotoClient(Options options);
@@ -119,6 +120,9 @@ class MtprotoClient final : public Actor {
   // Update handler
   using UpdateHandler = std::function<void(tl_object_ptr<telegram_api::Updates>)>;
   void set_update_handler(UpdateHandler handler);
+
+  // Export current session state as base64 string
+  string export_session() const;
 
   ActorShared<MtprotoClient> create_reference();
 

@@ -23,6 +23,7 @@ struct Client::Impl {
   std::function<void(int, const string &)> auth_state_handler;
   string bot_token;
   string phone_number;
+  string session_data;
 
   td::unique_ptr<td::ConcurrentScheduler> scheduler;
   td::MtprotoClient *actor_raw = nullptr;  // valid only while event loop is running
@@ -31,6 +32,9 @@ struct Client::Impl {
   std::mutex pending_mutex;
   string pending_code;
   bool has_pending_code = false;
+
+  string exported_session;
+  bool has_exported_session = false;
 };
 
 Client::Client(Options options) : impl_(std::make_unique<Impl>()) {
@@ -51,6 +55,12 @@ std::unique_ptr<Client> Client::create(Options options) {
   return std::unique_ptr<Client>(new Client(std::move(options)));
 }
 
+std::unique_ptr<Client> Client::create(Options options, string session_data) {
+  auto client = std::unique_ptr<Client>(new Client(std::move(options)));
+  client->impl_->session_data = std::move(session_data);
+  return client;
+}
+
 void Client::auth_with_bot_token(string bot_token) {
   impl_->bot_token = std::move(bot_token);
 }
@@ -69,6 +79,11 @@ void Client::on_update(std::function<void(tl_object_ptr<td::telegram_api::Update
   impl_->update_handler = std::move(handler);
 }
 
+string Client::export_session() {
+  std::lock_guard<std::mutex> lock(impl_->pending_mutex);
+  return impl_->exported_session;
+}
+
 void Client::on_auth_state(std::function<void(int state, const string &info)> handler) {
   impl_->auth_state_handler = std::move(handler);
 }
@@ -81,6 +96,7 @@ void Client::run() {
   auto opts = impl_->actor_options;
   opts.bot_token = std::move(impl_->bot_token);
   opts.phone_number = std::move(impl_->phone_number);
+  opts.session_data = std::move(impl_->session_data);
 
   auto actor = impl_->scheduler->create_actor_unsafe<td::MtprotoClient>(0, "MtprotoClient", std::move(opts));
   auto *raw = actor.get_actor_unsafe();
@@ -102,6 +118,7 @@ void Client::run() {
       impl_->actor_raw->check_code(std::move(impl_->pending_code));
       impl_->has_pending_code = false;
     }
+    impl_->exported_session = impl_->actor_raw->export_session();
   }
 
   impl_->actor_raw = nullptr;

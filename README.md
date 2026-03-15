@@ -272,8 +272,6 @@ autoproto/
 ├── tdactor/                     # Actor framework + scheduler
 ├── tdutils/                     # Utilities (logging, crypto, Status, Promise)
 ├── tdnet/                       # Network utilities (Socks5, HTTP)
-├── tddb/                        # Database layer (TdDb, SqliteKeyValue)
-├── tde2e/                       # End-to-end encryption
 ├── examples/                    # Usage examples
 │   ├── echo_bot.cpp
 │   └── channel_crawler.cpp
@@ -289,8 +287,6 @@ autoproto/
 | tdactor | `tdactor/` | `Actor`, `ActorOwn<T>`, `ActorId<T>`, `ConcurrentScheduler` |
 | tdnet | `tdnet/` | TCP, TLS, Socks5, HTTP transport |
 | tdtl | `tdtl/` | TL serialization/deserialization runtime |
-| tddb | `tddb/` | SQLite-backed key-value and binlog storage |
-| tde2e | `tde2e/` | End-to-end encryption primitives |
 | MTProto | `td/mtproto/` | Key exchange, encryption, session management |
 | Network | `td/telegram/net/` | Connections, auth keys, query dispatch |
 | Managers | `td/telegram/` | Auth, config, DC management |

@@ -32,7 +32,6 @@ option(TD_ENABLE_DOTNET "Use \"ON\" or \"CX\" to enable generation of C++/CLI or
 if (NOT CMAKE_CROSSCOMPILING)
   option(TD_GENERATE_SOURCE_FILES "Use \"ON\" to just generate TDLib source files.")
 endif()
-option(TD_E2E_ONLY "Use \"ON\" to build and install tde2e instead of TDLib.")
 
 include(CTest)
 
@@ -182,33 +181,6 @@ if (NOT ZLIB_FOUND)
   return()
 endif()
 
-set(TDE2E_ENABLE_INSTALL ${TD_INSTALL_STATIC_LIBRARIES} CACHE BOOL "" FORCE)
-set(TDE2E_INSTALL_INCLUDES ${TD_E2E_ONLY} CACHE BOOL "" FORCE)
-add_subdirectory(tde2e)
-
-if (TD_E2E_ONLY)
-  if (TD_INSTALL_STATIC_LIBRARIES)
-    include(GeneratePkgConfig)
-    generate_pkgconfig(tdutils "Telegram Library - Utils")
-    generate_pkgconfig(tde2e "Telegram Library - E2E")
-    install(EXPORT TdStaticTargets
-      FILE tde2eStaticTargets.cmake
-      NAMESPACE tde2e::
-      DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tde2e"
-    )
-  endif()
-  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/tde2eConfig.cmake" "include(\"\${CMAKE_CURRENT_LIST_DIR}/tde2eStaticTargets.cmake\")\n")
-  include(CMakePackageConfigHelpers)
-  write_basic_package_version_file("tde2eConfigVersion.cmake"
-    VERSION "${TDLib_VERSION}"
-    COMPATIBILITY ExactVersion
-  )
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/tde2eConfig.cmake" "${CMAKE_CURRENT_BINARY_DIR}/tde2eConfigVersion.cmake"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tde2e"
-  )
-  return()
-endif()
-
 if (NOT TDUTILS_MIME_TYPE OR NOT TDUTILS_USE_EXTERNAL_DEPENDENCIES)
   message(WARNING "Option TDUTILS_MIME_TYPE and TDUTILS_USE_EXTERNAL_DEPENDENCIES must not be disabled: stop TDLib building")
   return()
@@ -219,12 +191,6 @@ add_subdirectory(tdactor)
 
 set(TDNET_ENABLE_INSTALL ${TD_INSTALL_STATIC_LIBRARIES} CACHE BOOL "" FORCE)
 add_subdirectory(tdnet)
-
-set(TDSQLITE_ENABLE_INSTALL ${TD_INSTALL_STATIC_LIBRARIES} CACHE BOOL "" FORCE)
-add_subdirectory(sqlite)
-
-set(TDDB_ENABLE_INSTALL ${TD_INSTALL_STATIC_LIBRARIES} CACHE BOOL "" FORCE)
-add_subdirectory(tddb)
 
 if (BUILD_TESTING)
   add_subdirectory(test)
@@ -383,7 +349,6 @@ set(TDLIB_SOURCE
   td/telegram/MtprotoClient.h
   td/telegram/SequenceDispatcher.h
   td/telegram/StateManager.h
-  td/telegram/TdCallback.h
   td/telegram/TdDb.h
   td/telegram/UniqueId.h
   td/telegram/Version.h
@@ -415,8 +380,6 @@ set(TDLIB_SOURCE
   td/telegram/net/SessionMultiProxy.h
   td/telegram/net/SessionProxy.h
   td/telegram/net/TempAuthKeyWatchdog.h
-  td/telegram/TdCallback.h
-  td/telegram/Version.h
 
   ${TL_TD_AUTO_SOURCE}
 
@@ -494,7 +457,7 @@ endif()
 # tdcore - internal TDLib interface
 add_library(tdcore STATIC ${TDLIB_SOURCE})
 target_include_directories(tdcore PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<BUILD_INTERFACE:${TL_TD_AUTO_INCLUDE_DIR}>)
-target_link_libraries(tdcore PUBLIC tdapi tdnet tddb tdactor tde2e tdutils PRIVATE tdmtproto)
+target_link_libraries(tdcore PUBLIC tdapi tdnet tdactor tdutils PRIVATE tdmtproto)
 
 # mtproto - public API wrapper
 add_library(mtproto STATIC

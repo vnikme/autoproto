@@ -44,6 +44,15 @@ void MtprotoClient::start_up() {
   // Create TdDb (in-memory)
   G()->set_td_db(make_unique<TdDb>());
 
+  // Import session if provided
+  if (!options_.session_data.empty()) {
+    if (!G()->td_db()->import_session(options_.session_data)) {
+      LOG(ERROR) << "Failed to import session data — starting fresh";
+    } else {
+      LOG(INFO) << "Session data imported successfully";
+    }
+  }
+
   init();
 }
 
@@ -149,6 +158,10 @@ void MtprotoClient::send_raw_query(NetQueryPtr query, Promise<BufferSlice> promi
 void MtprotoClient::send_raw_query_from_function(const telegram_api::Function &function, Promise<BufferSlice> promise) {
   auto query = G()->net_query_creator().create(function);
   send_raw_query(std::move(query), std::move(promise));
+}
+
+string MtprotoClient::export_session() const {
+  return G()->td_db()->export_session();
 }
 
 ActorShared<MtprotoClient> MtprotoClient::create_reference() {
