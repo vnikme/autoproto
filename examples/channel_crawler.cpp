@@ -2,12 +2,12 @@
 // examples/channel_crawler.cpp — Fetch recent messages from a public channel.
 //
 // Authenticates with a phone number (interactive code entry), resolves a
-// channel username via contacts.resolveUsername, then fetches the last N
-// messages via messages.getHistory and prints them.
+// channel username via contacts.resolveUsername, then fetches incremental
+// updates via updates.getChannelDifference and prints them.
 //
 // Build: cmake --build build --target channel_crawler
 // Run:   API_ID=12345 API_HASH=abc... PHONE=+1234567890 CHANNEL=durov
-//        LIMIT=10 ./build/bin/channel_crawler
+//        LIMIT=100 ./build/bin/channel_crawler
 //
 #include "mtproto/Client.h"
 
@@ -19,7 +19,6 @@
 
 #include "td/utils/common.h"
 #include "td/utils/logging.h"
-#include "td/utils/overloaded.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -28,64 +27,92 @@
 using namespace td;
 namespace api = telegram_api;
 
-static void fetch_history(MtprotoClient *mc, int64 channel_id, int64 access_hash, int32 limit,
-                          ::mtproto::Client *client) {
-  auto input_channel = api::make_object<api::inputChannel>(channel_id, access_hash);
-  auto input_peer = api::make_object<api::inputPeerChannel>(channel_id, access_hash);
+static int64 peer_id(const api::object_ptr<api::Peer> &peer) {
+  if (!peer) {
+    return 0;
+  }
+  switch (peer->get_id()) {
+    case api::peerUser::ID:
+      return static_cast<const api::peerUser *>(peer.get())->user_id_;
+    case api::peerChat::ID:
+      return static_cast<const api::peerChat *>(peer.get())->chat_id_;
+    case api::peerChannel::ID:
+      return static_cast<const api::peerChannel *>(peer.get())->channel_id_;
+    default:
+      return 0;
+  }
+}
 
-  auto req = api::make_object<api::messages_getHistory>(
-      std::move(input_peer),  // peer
-      0,                      // offset_id
-      0,                      // offset_date
-      0,                      // add_offset
-      limit,                  // limit
-      0,                      // max_id
-      0,                      // min_id
-      0                       // hash
+static void print_messages(const std::vector<api::object_ptr<api::Message>> &messages) {
+  for (auto &msg : messages) {
+    if (!msg) {
+      continue;
+    }
+    if (msg->get_id() == api::message::ID) {
+      auto *m = static_cast<const api::message *>(msg.get());
+      std::cout << "  [" << m->id_ << "] date=" << m->date_ << " from=" << peer_id(m->from_id_) << "  "
+                << m->message_ << std::endl;
+    } else if (msg->get_id() == api::messageService::ID) {
+      auto *m = static_cast<const api::messageService *>(msg.get());
+      std::cout << "  [" << m->id_ << "] (service message)" << std::endl;
+    }
+  }
+}
+
+static void fetch_channel_diff(MtprotoClient *mc, int64 channel_id, int64 access_hash, int32 limit,
+                                ::mtproto::Client *client) {
+  auto input_channel = api::make_object<api::inputChannel>(channel_id, access_hash);
+  auto filter = api::make_object<api::channelMessagesFilterEmpty>();
+
+  auto req = api::make_object<api::updates_getChannelDifference>(
+      0,                        // flags (force=false)
+      false,                    // force
+      std::move(input_channel), // channel
+      std::move(filter),        // filter
+      0,                        // pts (start from beginning)
+      limit                     // limit
   );
 
   mc->send(
       std::move(req),
       PromiseCreator::lambda(
-          [client](Result<api::object_ptr<api::messages_Messages>> r_result) {
+          [client](Result<api::object_ptr<api::updates_ChannelDifference>> r_result) {
             if (r_result.is_error()) {
-              std::cerr << "[crawl] getHistory error: " << r_result.error().message().str() << std::endl;
+              std::cerr << "[crawl] getChannelDifference error: " << r_result.error().message().str() << std::endl;
               client->stop();
               return;
             }
             auto result = r_result.move_as_ok();
-            std::vector<api::object_ptr<api::Message>> *messages_ptr = nullptr;
 
             switch (result->get_id()) {
-              case api::messages_messages::ID:
-                messages_ptr = &static_cast<api::messages_messages *>(result.get())->messages_;
+              case api::updates_channelDifference::ID: {
+                auto *diff = static_cast<api::updates_channelDifference *>(result.get());
+                std::cout << "\n=== channelDifference: " << diff->new_messages_.size() << " new messages, "
+                          << diff->other_updates_.size() << " other updates ===" << std::endl;
+                print_messages(diff->new_messages_);
+                std::cout << "new_pts=" << diff->pts_ << "  final=" << diff->final_ << std::endl;
                 break;
-              case api::messages_messagesSlice::ID:
-                messages_ptr = &static_cast<api::messages_messagesSlice *>(result.get())->messages_;
+              }
+              case api::updates_channelDifferenceTooLong::ID: {
+                auto *diff = static_cast<api::updates_channelDifferenceTooLong *>(result.get());
+                int32 pts = 0;
+                if (diff->dialog_ && diff->dialog_->get_id() == api::dialog::ID) {
+                  pts = static_cast<api::dialog *>(diff->dialog_.get())->pts_;
+                }
+                std::cout << "\n=== channelDifferenceTooLong: " << diff->messages_.size()
+                          << " messages, pts=" << pts << " ===" << std::endl;
+                std::cerr << "[crawl] Warning: difference too long, channel history was truncated" << std::endl;
+                print_messages(diff->messages_);
                 break;
-              case api::messages_channelMessages::ID:
-                messages_ptr = &static_cast<api::messages_channelMessages *>(result.get())->messages_;
+              }
+              case api::updates_channelDifferenceEmpty::ID: {
+                auto *diff = static_cast<api::updates_channelDifferenceEmpty *>(result.get());
+                std::cout << "\n=== channelDifferenceEmpty: no new updates (pts=" << diff->pts_ << ") ===" << std::endl;
                 break;
+              }
               default:
-                std::cout << "[crawl] Empty or unsupported message container" << std::endl;
-                client->stop();
-                return;
-            }
-
-            auto &messages = *messages_ptr;
-            std::cout << "\n=== " << messages.size() << " messages ===" << std::endl;
-
-            for (auto &msg : messages) {
-              if (!msg) {
-                continue;
-              }
-              if (msg->get_id() == api::message::ID) {
-                auto *m = static_cast<api::message *>(msg.get());
-                std::cout << "[" << m->id_ << "] " << m->date_ << "  " << m->message_ << std::endl;
-              } else if (msg->get_id() == api::messageService::ID) {
-                auto *m = static_cast<api::messageService *>(msg.get());
-                std::cout << "[" << m->id_ << "] (service message)" << std::endl;
-              }
+                std::cerr << "[crawl] Unknown channelDifference response type" << std::endl;
+                break;
             }
 
             std::cout << "\nDone." << std::endl;
@@ -101,12 +128,11 @@ int main() {
   auto limit_str = std::getenv("LIMIT");
 
   if (!api_id_str || !api_hash_str || !phone_str || !channel_str) {
-    std::cerr << "Usage: API_ID=... API_HASH=... PHONE=+... CHANNEL=username [LIMIT=10] ./channel_crawler"
-              << std::endl;
+    std::cerr << "Usage: API_ID=... API_HASH=... PHONE=+... CHANNEL=username [LIMIT=10] ./channel_crawler" << std::endl;
     return 1;
   }
 
-  int32 limit = limit_str ? std::atoi(limit_str) : 10;
+  int32 limit = limit_str ? std::atoi(limit_str) : 100;
 
   ::mtproto::Client::Options opts;
   opts.api_id = std::atoi(api_id_str);
@@ -149,35 +175,32 @@ int main() {
     auto *mc = static_cast<MtprotoClient *>(G()->td().get_actor_unsafe());
     auto req = api::make_object<api::contacts_resolveUsername>(0, channel_username, std::string());
 
-    mc->send(
-        std::move(req),
-        PromiseCreator::lambda(
-            [mc, limit, client_ptr = client.get()](Result<api::object_ptr<api::contacts_resolvedPeer>> r_result) {
-              if (r_result.is_error()) {
-                std::cerr << "[crawl] resolveUsername error: " << r_result.error().message().str() << std::endl;
-                client_ptr->stop();
-                return;
-              }
-              auto result = r_result.move_as_ok();
-              auto *resolved = result.get();
+    mc->send(std::move(req), PromiseCreator::lambda([mc, limit, client_ptr = client.get()](
+                                                        Result<api::object_ptr<api::contacts_resolvedPeer>> r_result) {
+               if (r_result.is_error()) {
+                 std::cerr << "[crawl] resolveUsername error: " << r_result.error().message().str() << std::endl;
+                 client_ptr->stop();
+                 return;
+               }
+               auto result = r_result.move_as_ok();
+               auto *resolved = result.get();
 
-              // Find the channel in the chats list
-              for (auto &chat : resolved->chats_) {
-                if (chat && chat->get_id() == api::channel::ID) {
-                  auto *ch = static_cast<api::channel *>(chat.get());
-                  std::cout << "[crawl] Resolved: channel_id=" << ch->id_
-                            << " access_hash=" << ch->access_hash_ << std::endl;
-                  fetch_history(mc, ch->id_, ch->access_hash_, limit, client_ptr);
-                  return;
-                }
-              }
-              std::cerr << "[crawl] No channel found in resolveUsername result" << std::endl;
-              client_ptr->stop();
-            }));
+               // Find the channel in the chats list
+               for (auto &chat : resolved->chats_) {
+                 if (chat && chat->get_id() == api::channel::ID) {
+                   auto *ch = static_cast<api::channel *>(chat.get());
+                   std::cout << "[crawl] Resolved: channel_id=" << ch->id_ << " access_hash=" << ch->access_hash_
+                             << std::endl;
+                   fetch_channel_diff(mc, ch->id_, ch->access_hash_, limit, client_ptr);
+                   return;
+                 }
+               }
+               std::cerr << "[crawl] No channel found in resolveUsername result" << std::endl;
+               client_ptr->stop();
+             }));
   });
 
-  std::cout << "Starting channel crawler for @" << channel_username
-            << " (limit=" << limit << ")..." << std::endl;
+  std::cout << "Starting channel crawler for @" << channel_username << " (limit=" << limit << ")..." << std::endl;
   client->run();
 
   return 0;

@@ -4,8 +4,12 @@
 // Authenticates as a bot, listens for updateShortMessage and updateNewMessage,
 // and replies with the same text via messages.sendMessage.
 //
+// Set SESSION env var to restore a previous session (avoids re-auth).
+// After successful auth, the session string is printed for later reuse.
+//
 // Build: cmake --build build --target echo_bot
 // Run:   API_ID=12345 API_HASH=abc... BOT_TOKEN=123:ABC ./build/bin/echo_bot
+//        (first run prints SESSION=... for reuse)
 //
 #include "mtproto/Client.h"
 
@@ -29,9 +33,10 @@ int main() {
   auto api_id_str = std::getenv("API_ID");
   auto api_hash_str = std::getenv("API_HASH");
   auto bot_token_str = std::getenv("BOT_TOKEN");
+  auto session_str = std::getenv("SESSION");
 
   if (!api_id_str || !api_hash_str || !bot_token_str) {
-    std::cerr << "Usage: API_ID=... API_HASH=... BOT_TOKEN=... ./echo_bot" << std::endl;
+    std::cerr << "Usage: API_ID=... API_HASH=... BOT_TOKEN=... [SESSION=...] ./echo_bot" << std::endl;
     return 1;
   }
 
@@ -41,13 +46,28 @@ int main() {
   opts.device_model = "EchoBot";
   opts.application_version = "1.0";
 
-  auto client = ::mtproto::Client::create(opts);
+  std::unique_ptr<::mtproto::Client> client;
+  if (session_str && session_str[0] != '\0') {
+    std::cout << "[session] Restoring session from SESSION env var..." << std::endl;
+    client = ::mtproto::Client::create(opts, session_str);
+  } else {
+    client = ::mtproto::Client::create(opts);
+  }
   client->auth_with_bot_token(bot_token_str);
 
-  client->on_auth_state([](int state, const td::string &info) {
+  bool session_printed = false;
+
+  client->on_auth_state([&](int state, const td::string &info) {
     // 0=WaitPhone, 1=WaitCode, 2=Ok, 3=Error
     if (state == 2) {
       std::cout << "[auth] Authorized as bot" << std::endl;
+      if (!session_printed) {
+        session_printed = true;
+        auto session = client->export_session();
+        if (!session.empty()) {
+          std::cout << "[session] SESSION=" << session << std::endl;
+        }
+      }
     } else if (state == 3) {
       std::cerr << "[auth] Error: " << info << std::endl;
     }
