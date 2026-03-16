@@ -418,8 +418,8 @@ Handwritten C++ (excluding auto-generated TL code):
 Auto-generated TL serialization code (`td/generate/auto/`) adds ~390 k
 lines on top but is not checked in.
 
-For comparison, the full TDLib tree is ~400 k lines of handwritten code.
-autoproto is roughly a quarter of that.
+For comparison, the full TDLib tree is ~453 k lines of handwritten code.
+autoproto is roughly a fifth of that.
 
 ## License
 
