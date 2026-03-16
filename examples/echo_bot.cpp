@@ -121,13 +121,22 @@ int main() {
         return;
       }
       auto *m = static_cast<const api::message *>(new_msg->message_.get());
-      if (m->out_ || !m->from_id_ || m->from_id_->get_id() != api::peerUser::ID) {
+      if (m->out_) {
         return;
       }
-      auto *peer = static_cast<const api::peerUser *>(m->from_id_.get());
-      auto it = g_user_hashes.find(peer->user_id_);
+      // Extract user_id from from_id_ or peer_id_
+      int64 user_id = 0;
+      if (m->from_id_ && m->from_id_->get_id() == api::peerUser::ID) {
+        user_id = static_cast<const api::peerUser *>(m->from_id_.get())->user_id_;
+      } else if (m->peer_id_ && m->peer_id_->get_id() == api::peerUser::ID) {
+        user_id = static_cast<const api::peerUser *>(m->peer_id_.get())->user_id_;
+      }
+      if (user_id == 0) {
+        return;
+      }
+      auto it = g_user_hashes.find(user_id);
       int64 hash = (it != g_user_hashes.end()) ? it->second : 0;
-      send_echo(peer->user_id_, hash, m->message_);
+      send_echo(user_id, hash, m->message_);
     };
 
     switch (updates->get_id()) {
