@@ -6,3 +6,4 @@ docs/
 /tdlib/
 vcpkg/
 .clang-tidy
+*.session

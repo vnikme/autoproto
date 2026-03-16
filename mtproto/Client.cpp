@@ -143,4 +143,12 @@ string Client::export_session() {
   return {};
 }
 
+void Client::send_raw(const td::telegram_api::Function &function, td::Promise<td::BufferSlice> promise) {
+  if (impl_->actor_raw) {
+    impl_->actor_raw->send_raw_query_from_function(function, std::move(promise));
+  } else {
+    promise.set_error(td::Status::Error("Client not running"));
+  }
+}
+
 }  // namespace mtproto

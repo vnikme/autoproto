@@ -7,9 +7,7 @@
 #include "td/telegram/net/NetQueryVerifier.h"
 
 #include "td/telegram/Global.h"
-#include "td/telegram/MtprotoClient.h"
 #include "td/telegram/net/NetQueryDispatcher.h"
-#include "td/telegram/td_api.h"
 #include "td/telegram/telegram_api.h"
 
 #include "td/utils/base64.h"
@@ -56,9 +54,7 @@ void NetQueryVerifier::verify(NetQueryPtr query, string nonce) {
   verification_query.nonce_or_action_ = nonce;
   queries_.emplace(query_id, std::make_pair(std::move(query), std::move(verification_query)));
 
-  send_closure(
-      G()->td(), &MtprotoClient::send_update,
-      td_api::make_object<td_api::updateApplicationVerificationRequired>(query_id, nonce, cloud_project_number));
+  LOG(WARNING) << "Application verification requested but not supported in protocol-only mode (query_id=" << query_id << ")";
 }
 
 void NetQueryVerifier::check_recaptcha(NetQueryPtr query, string action, string recaptcha_key_id) {
@@ -79,9 +75,7 @@ void NetQueryVerifier::check_recaptcha(NetQueryPtr query, string action, string 
   verification_query.recaptcha_key_id_ = recaptcha_key_id;
   queries_.emplace(query_id, std::make_pair(std::move(query), std::move(verification_query)));
 
-  send_closure(
-      G()->td(), &MtprotoClient::send_update,
-      td_api::make_object<td_api::updateApplicationRecaptchaVerificationRequired>(query_id, action, recaptcha_key_id));
+  LOG(WARNING) << "Application reCAPTCHA verification requested but not supported in protocol-only mode (query_id=" << query_id << ")";
 }
 
 void NetQueryVerifier::set_verification_token(int64 query_id, string &&token, Promise<Unit> &&promise) {

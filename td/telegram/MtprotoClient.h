@@ -11,7 +11,6 @@
 #pragma once
 
 #include "td/telegram/net/NetQuery.h"
-#include "td/telegram/td_api.h"
 #include "td/telegram/telegram_api.h"
 
 #include "td/actor/actor.h"
@@ -67,9 +66,6 @@ class MtprotoClient final : public Actor {
 
   explicit MtprotoClient(Options options);
 
-  unique_ptr<AuthManager> auth_manager_;
-  ActorOwn<AuthManager> auth_manager_actor_;
-
   // Send a raw MTProto request; result delivered via callback
   void send_query(NetQueryPtr query, ActorShared<NetQueryCallback> callback);
 
@@ -104,8 +100,8 @@ class MtprotoClient final : public Actor {
   // Called when an update is received from the server
   void on_update(tl_object_ptr<telegram_api::Updates> updates, uint64 auth_key_id);
 
-  // Forward a td_api update (e.g. verification requests)
-  void send_update(td_api::object_ptr<td_api::Update> update);
+  // Access auth manager (for internal use by NetQueryCreator etc.)
+  AuthManager *auth_manager() { return auth_manager_.get(); }
 
   // Bot token authentication
   void auth_with_bot_token(string bot_token, Promise<Unit> promise);
@@ -129,6 +125,9 @@ class MtprotoClient final : public Actor {
   ActorShared<MtprotoClient> create_reference();
 
  private:
+  unique_ptr<AuthManager> auth_manager_;
+  ActorOwn<AuthManager> auth_manager_actor_;
+
   Options options_;
   UpdateHandler update_handler_;
   AuthStateCallback pending_auth_state_callback_;
@@ -150,10 +149,6 @@ class MtprotoClient final : public Actor {
   void hangup_shared() final;
 
   void init();
-
-  // Update synchronization: called after auth succeeds
-  void request_updates_state();
-  void request_difference(int32 pts, int32 date, int32 qts);
 };
 
 }  // namespace td

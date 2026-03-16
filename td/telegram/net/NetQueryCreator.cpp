@@ -69,7 +69,7 @@ NetQueryPtr NetQueryCreator::create(uint64 id, const telegram_api::object_ptr<te
       !G()->close_flag()) {
     auto td = G()->td();
     if (!td.empty()) {
-      auto auth_manager = td.get_actor_unsafe()->auth_manager_.get();
+      auto auth_manager = td.get_actor_unsafe()->auth_manager();
       if (auth_manager != nullptr && auth_manager->is_bot()) {
         total_timeout_limit = 8;
         min_gzipped_size = 1024;

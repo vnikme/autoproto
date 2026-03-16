@@ -15,10 +15,6 @@
 //
 #include "mtproto/Client.h"
 
-#include "td/telegram/Global.h"
-#include "td/telegram/MtprotoClient.h"
-#include "td/telegram/net/NetQueryCreator.h"
-#include "td/telegram/net/NetQueryDispatcher.h"
 #include "td/telegram/telegram_api.h"
 
 #include "td/utils/common.h"
@@ -65,7 +61,7 @@ static void print_message(const api::object_ptr<api::Message> &msg) {
 
 // Crawl state shared across recursive callbacks
 struct CrawlState {
-  MtprotoClient *mc;
+  ::mtproto::Client *client;
   int64 channel_id;
   int64 access_hash;
   int32 pts;
@@ -95,8 +91,8 @@ static void crawl_next(std::shared_ptr<CrawlState> state) {
                                                                  state->limit               // limit
   );
 
-  state->mc->send(
-      std::move(req), PromiseCreator::lambda([state](Result<api::object_ptr<api::updates_ChannelDifference>> r_result) {
+  state->client->send(
+      std::move(req), [state](td::Result<api::object_ptr<api::updates_ChannelDifference>> r_result) {
         if (r_result.is_error()) {
           auto err = r_result.error().message().str();
           std::cerr << "[crawl] getChannelDifference error at pts=" << state->pts << ": " << err << std::endl;
@@ -139,17 +135,17 @@ static void crawl_next(std::shared_ptr<CrawlState> state) {
             state->stop_fn();
             return;
         }
-      }));
+      });
 }
 
 // Step 2: After resolving channel, get full channel info to obtain pts
-static void fetch_full_channel(MtprotoClient *mc, int64 channel_id, int64 access_hash, int32 limit,
+static void fetch_full_channel(::mtproto::Client *client, int64 channel_id, int64 access_hash, int32 limit,
                                std::function<void()> stop_fn) {
   auto input_channel = api::make_object<api::inputChannel>(channel_id, access_hash);
   auto req = api::make_object<api::channels_getFullChannel>(std::move(input_channel));
 
-  mc->send(std::move(req), PromiseCreator::lambda([mc, channel_id, access_hash, limit, stop_fn = std::move(stop_fn)](
-                                                      Result<api::object_ptr<api::messages_chatFull>> r_result) {
+  client->send(std::move(req), [client, channel_id, access_hash, limit, stop_fn = std::move(stop_fn)](
+                                                      td::Result<api::object_ptr<api::messages_chatFull>> r_result) {
              if (r_result.is_error()) {
                std::cerr << "[crawl] getFullChannel error: " << r_result.error().message().str() << std::endl;
                stop_fn();
@@ -172,7 +168,7 @@ static void fetch_full_channel(MtprotoClient *mc, int64 channel_id, int64 access
                        << ", step=" << STEP << std::endl;
 
              auto state = std::make_shared<CrawlState>();
-             state->mc = mc;
+             state->client = client;
              state->channel_id = channel_id;
              state->access_hash = access_hash;
              state->pts = start_pts;
@@ -183,7 +179,7 @@ static void fetch_full_channel(MtprotoClient *mc, int64 channel_id, int64 access
              state->stop_fn = stop_fn;
 
              crawl_next(state);
-           }));
+           });
 }
 
 int main() {
@@ -250,12 +246,12 @@ int main() {
 
       // Start crawling now that we're authenticated
       std::cout << "[crawl] Resolving channel @" << channel_username << "..." << std::endl;
-      auto *mc = static_cast<MtprotoClient *>(G()->td().get_actor_unsafe());
+      auto *cli = client.get();
       auto req = api::make_object<api::contacts_resolveUsername>(0, channel_username, std::string());
 
-      mc->send(
+      cli->send(
           std::move(req),
-          PromiseCreator::lambda([mc, limit, stop_fn](Result<api::object_ptr<api::contacts_resolvedPeer>> r_result) {
+          [cli, limit, stop_fn](td::Result<api::object_ptr<api::contacts_resolvedPeer>> r_result) {
             if (r_result.is_error()) {
               std::cerr << "[crawl] resolveUsername error: " << r_result.error().message().str() << std::endl;
               stop_fn();
@@ -269,13 +265,13 @@ int main() {
                 auto *ch = static_cast<api::channel *>(chat.get());
                 std::cout << "[crawl] Resolved: channel_id=" << ch->id_ << " access_hash=" << ch->access_hash_
                           << std::endl;
-                fetch_full_channel(mc, ch->id_, ch->access_hash_, limit, stop_fn);
+                fetch_full_channel(cli, ch->id_, ch->access_hash_, limit, stop_fn);
                 return;
               }
             }
             std::cerr << "[crawl] No channel found in resolveUsername result" << std::endl;
             stop_fn();
-          }));
+          });
     } else if (state == 3) {  // Error
       std::cerr << "[auth] Error: " << info << std::endl;
       client->stop();

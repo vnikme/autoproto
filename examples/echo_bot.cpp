@@ -12,10 +12,6 @@
 //
 #include "mtproto/Client.h"
 
-#include "td/telegram/Global.h"
-#include "td/telegram/MtprotoClient.h"
-#include "td/telegram/net/NetQueryCreator.h"
-#include "td/telegram/net/NetQueryDispatcher.h"
 #include "td/telegram/telegram_api.h"
 
 #include "td/utils/common.h"
@@ -42,7 +38,7 @@ static void cache_users(const std::vector<api::object_ptr<api::User>> &users) {
   }
 }
 
-static void send_echo(int64 user_id, int64 access_hash, const std::string &text) {
+static void send_echo(::mtproto::Client *client, int64 user_id, int64 access_hash, const std::string &text) {
   if (text.empty()) {
     return;
   }
@@ -55,9 +51,15 @@ static void send_echo(int64 user_id, int64 access_hash, const std::string &text)
       0, false, false, false, false, false, false, false, false, std::move(peer), nullptr, text, random_id, nullptr,
       std::vector<api::object_ptr<api::MessageEntity>>{}, 0, 0, nullptr, nullptr, 0, 0, nullptr);
 
-  auto query = G()->net_query_creator().create(*send_msg);
-  G()->net_query_dispatcher().dispatch(std::move(query));
-  std::cout << "[msg] Echoed back to user " << user_id << std::endl;
+  client->send(std::move(send_msg),
+               [user_id](td::Result<api::object_ptr<api::Updates>> result) {
+                 if (result.is_error()) {
+                   std::cerr << "[msg] Failed to echo to user " << user_id << ": " << result.error().message().str()
+                             << std::endl;
+                   return;
+                 }
+                 std::cout << "[msg] Echoed back to user " << user_id << std::endl;
+               });
 }
 
 int main() {
@@ -104,7 +106,8 @@ int main() {
     }
   });
 
-  client->on_update([](tl_object_ptr<api::Updates> updates) {
+  auto *cli = client.get();
+  client->on_update([cli](tl_object_ptr<api::Updates> updates) {
     if (!updates) {
       return;
     }
@@ -112,7 +115,7 @@ int main() {
     std::cout << "[update] Received update type_id=" << updates->get_id() << std::endl;
 
     // Helper: process a single Update object (handles updateNewMessage)
-    auto process_single_update = [](const api::object_ptr<api::Update> &u) {
+    auto process_single_update = [cli](const api::object_ptr<api::Update> &u) {
       if (!u || u->get_id() != api::updateNewMessage::ID) {
         return;
       }
@@ -136,7 +139,7 @@ int main() {
       }
       auto it = g_user_hashes.find(user_id);
       int64 hash = (it != g_user_hashes.end()) ? it->second : 0;
-      send_echo(user_id, hash, m->message_);
+      send_echo(cli, user_id, hash, m->message_);
     };
 
     switch (updates->get_id()) {
@@ -147,32 +150,29 @@ int main() {
         }
         auto it = g_user_hashes.find(msg->user_id_);
         if (it != g_user_hashes.end()) {
-          send_echo(msg->user_id_, it->second, msg->message_);
+          send_echo(cli, msg->user_id_, it->second, msg->message_);
         } else {
-          // Fetch the message to discover the user's access_hash
-          auto *mc = static_cast<MtprotoClient *>(G()->td().get_actor_unsafe());
           std::vector<api::object_ptr<api::InputMessage>> ids;
           ids.push_back(api::make_object<api::inputMessageID>(msg->id_));
           auto req = api::make_object<api::messages_getMessages>(std::move(ids));
           int64 uid = msg->user_id_;
           std::string text = msg->message_;
-          mc->send(std::move(req),
-                   PromiseCreator::lambda(
-                       [uid, text = std::move(text)](Result<api::object_ptr<api::messages_Messages>> r_result) mutable {
-                         if (r_result.is_error()) {
-                           return;
-                         }
-                         auto result = r_result.move_as_ok();
-                         if (result->get_id() == api::messages_messages::ID) {
-                           cache_users(static_cast<api::messages_messages *>(result.get())->users_);
-                         } else if (result->get_id() == api::messages_messagesSlice::ID) {
-                           cache_users(static_cast<api::messages_messagesSlice *>(result.get())->users_);
-                         }
-                         auto it2 = g_user_hashes.find(uid);
-                         if (it2 != g_user_hashes.end()) {
-                           send_echo(uid, it2->second, text);
-                         }
-                       }));
+          cli->send(std::move(req),
+                    [cli, uid, text = std::move(text)](td::Result<api::object_ptr<api::messages_Messages>> r_result) mutable {
+                      if (r_result.is_error()) {
+                        return;
+                      }
+                      auto result = r_result.move_as_ok();
+                      if (result->get_id() == api::messages_messages::ID) {
+                        cache_users(static_cast<api::messages_messages *>(result.get())->users_);
+                      } else if (result->get_id() == api::messages_messagesSlice::ID) {
+                        cache_users(static_cast<api::messages_messagesSlice *>(result.get())->users_);
+                      }
+                      auto it2 = g_user_hashes.find(uid);
+                      if (it2 != g_user_hashes.end()) {
+                        send_echo(cli, uid, it2->second, text);
+                      }
+                    });
         }
         break;
       }

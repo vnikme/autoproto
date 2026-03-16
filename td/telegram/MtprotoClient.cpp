@@ -97,13 +97,9 @@ void MtprotoClient::init() {
 
   // Apply pending auth state callback
   if (pending_auth_state_callback_) {
-    auto self_id = actor_id(this);
     auth_manager_->set_auth_state_callback(
-        [self_id, cb = std::move(pending_auth_state_callback_)](AuthManager::AuthState state, const string &info) {
+        [cb = std::move(pending_auth_state_callback_)](AuthManager::AuthState state, const string &info) {
           cb(static_cast<int>(state), info);
-          if (state == AuthManager::AuthState::Ok) {
-            send_closure(self_id, &MtprotoClient::request_updates_state);
-          }
         });
   }
 
@@ -145,10 +141,6 @@ void MtprotoClient::on_update(tl_object_ptr<telegram_api::Updates> updates, uint
   }
 }
 
-void MtprotoClient::send_update(td_api::object_ptr<td_api::Update> update) {
-  LOG(DEBUG) << "MtprotoClient::send_update: " << to_string(update);
-}
-
 void MtprotoClient::auth_with_bot_token(string bot_token, Promise<Unit> promise) {
   CHECK(auth_manager_ != nullptr);
   auth_manager_->check_bot_token(0, std::move(bot_token));
@@ -172,13 +164,9 @@ void MtprotoClient::check_password(string password) {
 
 void MtprotoClient::set_auth_state_callback(AuthStateCallback callback) {
   if (auth_manager_) {
-    auto self_id = actor_id(this);
     auth_manager_->set_auth_state_callback(
-        [self_id, cb = std::move(callback)](AuthManager::AuthState state, const string &info) {
+        [cb = std::move(callback)](AuthManager::AuthState state, const string &info) {
           cb(static_cast<int>(state), info);
-          if (state == AuthManager::AuthState::Ok) {
-            send_closure(self_id, &MtprotoClient::request_updates_state);
-          }
         });
   } else {
     pending_auth_state_callback_ = std::move(callback);
@@ -245,55 +233,6 @@ void MtprotoClient::tear_down() {
   }
   // Do NOT destroy the dispatcher here — session actors may still be processing
   // during scheduler shutdown. The Global destructor will clean it up.
-}
-
-void MtprotoClient::request_updates_state() {
-  LOG(INFO) << "Requesting updates.getState for sync";
-  send(telegram_api::make_object<telegram_api::updates_getState>(),
-       PromiseCreator::lambda(
-           [self = actor_id(this)](Result<tl_object_ptr<telegram_api::updates_state>> r_state) mutable {
-             if (r_state.is_error()) {
-               LOG(ERROR) << "updates.getState failed: " << r_state.error();
-               return;
-             }
-             auto state = r_state.move_as_ok();
-             LOG(INFO) << "updates.getState: pts=" << state->pts_ << " qts=" << state->qts_ << " date=" << state->date_
-                       << " seq=" << state->seq_;
-             send_closure(self, &MtprotoClient::request_difference, state->pts_, state->date_, state->qts_);
-           }));
-}
-
-void MtprotoClient::request_difference(int32 pts, int32 date, int32 qts) {
-  LOG(INFO) << "Requesting updates.getDifference pts=" << pts << " date=" << date << " qts=" << qts;
-  send(telegram_api::make_object<telegram_api::updates_getDifference>(0, pts, 0, 0, date, qts, 0),
-       PromiseCreator::lambda([](Result<tl_object_ptr<telegram_api::updates_Difference>> r_diff) {
-         if (r_diff.is_error()) {
-           LOG(ERROR) << "updates.getDifference failed: " << r_diff.error();
-           return;
-         }
-         auto diff = r_diff.move_as_ok();
-         switch (diff->get_id()) {
-           case telegram_api::updates_differenceEmpty::ID:
-             LOG(INFO) << "getDifference: empty — caught up with server";
-             break;
-           case telegram_api::updates_difference::ID: {
-             auto *d = static_cast<telegram_api::updates_difference *>(diff.get());
-             LOG(INFO) << "getDifference: " << d->new_messages_.size() << " messages, " << d->other_updates_.size()
-                       << " other updates";
-             break;
-           }
-           case telegram_api::updates_differenceSlice::ID: {
-             auto *d = static_cast<telegram_api::updates_differenceSlice *>(diff.get());
-             LOG(INFO) << "getDifference: slice with " << d->new_messages_.size() << " messages";
-             break;
-           }
-           case telegram_api::updates_differenceTooLong::ID:
-             LOG(INFO) << "getDifference: too long — some updates skipped";
-             break;
-           default:
-             break;
-         }
-       }));
 }
 
 }  // namespace td

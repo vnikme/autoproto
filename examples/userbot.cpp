@@ -12,10 +12,6 @@
 //
 #include "mtproto/Client.h"
 
-#include "td/telegram/Global.h"
-#include "td/telegram/MtprotoClient.h"
-#include "td/telegram/net/NetQueryCreator.h"
-#include "td/telegram/net/NetQueryDispatcher.h"
 #include "td/telegram/telegram_api.h"
 
 #include "td/utils/common.h"
@@ -43,7 +39,7 @@ static void cache_users(const std::vector<api::object_ptr<api::User>> &users) {
   }
 }
 
-static void send_text(int64 user_id, int64 access_hash, const std::string &text) {
+static void send_text(::mtproto::Client *client, int64 user_id, int64 access_hash, const std::string &text) {
   auto peer = api::make_object<api::inputPeerUser>(user_id, access_hash);
   auto random_id = Random::secure_int64();
 
@@ -72,8 +68,13 @@ static void send_text(int64 user_id, int64 access_hash, const std::string &text)
                                                   nullptr   // suggested_post
       );
 
-  auto query = G()->net_query_creator().create(*send_msg);
-  G()->net_query_dispatcher().dispatch(std::move(query));
+  client->send(std::move(send_msg),
+               [user_id](td::Result<api::object_ptr<api::Updates>> result) {
+                 if (result.is_error()) {
+                   std::cerr << "[msg] Failed to send to user " << user_id << ": " << result.error().message().str()
+                             << std::endl;
+                 }
+               });
 }
 
 int main() {
@@ -131,17 +132,18 @@ int main() {
     }
   });
 
-  client->on_update([](tl_object_ptr<api::Updates> updates) {
+  auto *cli = client.get();
+  client->on_update([cli](tl_object_ptr<api::Updates> updates) {
     if (!updates) {
       return;
     }
 
-    auto echo_back = [](int64 user_id, int64 access_hash, const std::string &text) {
+    auto echo_back = [cli](int64 user_id, int64 access_hash, const std::string &text) {
       if (text.empty()) {
         return;
       }
       std::cout << "[msg] From user " << user_id << ": " << text << std::endl;
-      send_text(user_id, access_hash, text);
+      send_text(cli, user_id, access_hash, text);
       std::cout << "[msg] Echoed back to user " << user_id << std::endl;
     };
 
@@ -151,48 +153,43 @@ int main() {
         if (msg->out_) {
           break;
         }
-        // Check user cache first
         auto it = g_user_hashes.find(msg->user_id_);
         if (it != g_user_hashes.end()) {
           echo_back(msg->user_id_, it->second, msg->message_);
         } else {
-          // Fetch the message to discover the user's access_hash
-          auto *mc = static_cast<MtprotoClient *>(G()->td().get_actor_unsafe());
           std::vector<api::object_ptr<api::InputMessage>> ids;
           ids.push_back(api::make_object<api::inputMessageID>(msg->id_));
           auto req = api::make_object<api::messages_getMessages>(std::move(ids));
           int64 uid = msg->user_id_;
           std::string text = msg->message_;
-          mc->send(std::move(req),
-                   PromiseCreator::lambda(
-                       [uid, text = std::move(text)](Result<api::object_ptr<api::messages_Messages>> r_result) mutable {
-                         if (r_result.is_error()) {
-                           std::cerr << "[msg] Failed to fetch message for user " << uid << ": "
-                                     << r_result.error().message().str() << std::endl;
-                           return;
-                         }
-                         auto result = r_result.move_as_ok();
-                         // All messages.Messages variants (except messagesNotModified) have users_
-                         switch (result->get_id()) {
-                           case api::messages_messages::ID:
-                             cache_users(static_cast<api::messages_messages *>(result.get())->users_);
-                             break;
-                           case api::messages_messagesSlice::ID:
-                             cache_users(static_cast<api::messages_messagesSlice *>(result.get())->users_);
-                             break;
-                           default:
-                             break;
-                         }
-                         auto it2 = g_user_hashes.find(uid);
-                         if (it2 != g_user_hashes.end()) {
-                           std::cout << "[msg] From user " << uid << ": " << text << std::endl;
-                           send_text(uid, it2->second, text);
-                           std::cout << "[msg] Echoed back to user " << uid << std::endl;
-                         } else {
-                           std::cout << "[msg] From user " << uid << ": " << text << " (could not resolve access_hash)"
-                                     << std::endl;
-                         }
-                       }));
+          cli->send(std::move(req),
+                    [cli, uid, text = std::move(text)](td::Result<api::object_ptr<api::messages_Messages>> r_result) mutable {
+                      if (r_result.is_error()) {
+                        std::cerr << "[msg] Failed to fetch message for user " << uid << ": "
+                                  << r_result.error().message().str() << std::endl;
+                        return;
+                      }
+                      auto result = r_result.move_as_ok();
+                      switch (result->get_id()) {
+                        case api::messages_messages::ID:
+                          cache_users(static_cast<api::messages_messages *>(result.get())->users_);
+                          break;
+                        case api::messages_messagesSlice::ID:
+                          cache_users(static_cast<api::messages_messagesSlice *>(result.get())->users_);
+                          break;
+                        default:
+                          break;
+                      }
+                      auto it2 = g_user_hashes.find(uid);
+                      if (it2 != g_user_hashes.end()) {
+                        std::cout << "[msg] From user " << uid << ": " << text << std::endl;
+                        send_text(cli, uid, it2->second, text);
+                        std::cout << "[msg] Echoed back to user " << uid << std::endl;
+                      } else {
+                        std::cout << "[msg] From user " << uid << ": " << text << " (could not resolve access_hash)"
+                                  << std::endl;
+                      }
+                    });
         }
         break;
       }
