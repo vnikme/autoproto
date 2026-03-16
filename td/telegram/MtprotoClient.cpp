@@ -9,6 +9,8 @@
 #include "td/telegram/AuthManager.h"
 #include "td/telegram/ConfigManager.h"
 #include "td/telegram/Global.h"
+#include "td/telegram/net/AuthDataShared.h"
+#include "td/telegram/net/AuthKeyState.h"
 #include "td/telegram/net/ConnectionCreator.h"
 #include "td/telegram/net/MtprotoHeader.h"
 #include "td/telegram/net/NetQueryDispatcher.h"
@@ -43,13 +45,15 @@ void MtprotoClient::start_up() {
 
   // Create TdDb (in-memory)
   G()->set_td_db(make_unique<TdDb>());
+  td_db_raw_ = G()->td_db();
 
   // Import session if provided
   if (!options_.session_data.empty()) {
+    LOG(INFO) << "Session import: attempting to restore from " << options_.session_data.size() << " chars";
     if (!G()->td_db()->import_session(options_.session_data)) {
-      LOG(ERROR) << "Failed to import session data — starting fresh";
+      LOG(ERROR) << "Failed to import session data (" << options_.session_data.size() << " chars) — starting fresh";
     } else {
-      LOG(INFO) << "Session data imported successfully";
+      LOG(INFO) << "Session data imported successfully (" << options_.session_data.size() << " chars)";
     }
   }
 
@@ -91,17 +95,41 @@ void MtprotoClient::init() {
   config_manager_ = create_actor<ConfigManager>("ConfigManager", create_reference());
   G()->set_config_manager(config_manager_.get());
 
-  // Auto-authenticate with bot token if provided
-  if (!options_.bot_token.empty()) {
-    auth_manager_->check_bot_token(0, std::move(options_.bot_token));
+  // Apply pending auth state callback
+  if (pending_auth_state_callback_) {
+    auto self_id = actor_id(this);
+    auth_manager_->set_auth_state_callback(
+        [self_id, cb = std::move(pending_auth_state_callback_)](AuthManager::AuthState state, const string &info) {
+          cb(static_cast<int>(state), info);
+          if (state == AuthManager::AuthState::Ok) {
+            send_closure(self_id, &MtprotoClient::request_updates_state);
+          }
+        });
   }
 
-  // Auto-start phone auth if provided
-  if (!options_.phone_number.empty()) {
+  // Auto-authenticate — but skip if session already has a valid auth key
+  // The actual main DC may differ from options_.dc_id after DC migration
+  int32 effective_dc_id = options_.dc_id;
+  auto s_main_dc_id = G()->td_db()->get_binlog_pmc()->get("main_dc_id");
+  if (!s_main_dc_id.empty()) {
+    effective_dc_id = to_integer<int32>(s_main_dc_id);
+  }
+  auto main_dc_key = AuthDataShared::get_auth_key_for_dc(DcId::internal(effective_dc_id));
+  auto key_state = get_auth_key_state(main_dc_key);
+  if (key_state == AuthKeyState::OK) {
+    LOG(INFO) << "Session has valid auth key for DC" << options_.dc_id << " — skipping auth flow";
+    auth_manager_->set_authorized();
+  } else if (!options_.bot_token.empty()) {
+    auth_manager_->check_bot_token(0, std::move(options_.bot_token));
+  } else if (!options_.phone_number.empty()) {
     auth_manager_->send_code(std::move(options_.phone_number));
   }
 
   LOG(INFO) << "MtprotoClient initialized — MTProto stack wired";
+
+  // Signal that network is available so Session and ConnectionCreator start working
+  send_closure(G()->state_manager(), &StateManager::on_network, NetType::WiFi);
+  send_closure(G()->state_manager(), &StateManager::on_online, true);
 }
 
 void MtprotoClient::on_result(NetQueryPtr query) {
@@ -109,6 +137,7 @@ void MtprotoClient::on_result(NetQueryPtr query) {
 }
 
 void MtprotoClient::on_update(tl_object_ptr<telegram_api::Updates> updates, uint64 auth_key_id) {
+  LOG(INFO) << "MtprotoClient::on_update type_id=" << (updates ? updates->get_id() : 0);
   if (update_handler_) {
     update_handler_(std::move(updates));
   } else {
@@ -136,10 +165,24 @@ void MtprotoClient::check_code(string code) {
   auth_manager_->check_code(std::move(code));
 }
 
+void MtprotoClient::check_password(string password) {
+  CHECK(auth_manager_ != nullptr);
+  auth_manager_->check_password(std::move(password));
+}
+
 void MtprotoClient::set_auth_state_callback(AuthStateCallback callback) {
-  auth_manager_->set_auth_state_callback([cb = std::move(callback)](AuthManager::AuthState state, const string &info) {
-    cb(static_cast<int>(state), info);
-  });
+  if (auth_manager_) {
+    auto self_id = actor_id(this);
+    auth_manager_->set_auth_state_callback(
+        [self_id, cb = std::move(callback)](AuthManager::AuthState state, const string &info) {
+          cb(static_cast<int>(state), info);
+          if (state == AuthManager::AuthState::Ok) {
+            send_closure(self_id, &MtprotoClient::request_updates_state);
+          }
+        });
+  } else {
+    pending_auth_state_callback_ = std::move(callback);
+  }
 }
 
 void MtprotoClient::set_update_handler(UpdateHandler handler) {
@@ -161,7 +204,10 @@ void MtprotoClient::send_raw_query_from_function(const telegram_api::Function &f
 }
 
 string MtprotoClient::export_session() const {
-  return G()->td_db()->export_session();
+  if (td_db_raw_ == nullptr) {
+    return string();
+  }
+  return td_db_raw_->export_session();
 }
 
 ActorShared<MtprotoClient> MtprotoClient::create_reference() {
@@ -194,6 +240,60 @@ void MtprotoClient::hangup_shared() {
 
 void MtprotoClient::tear_down() {
   LOG(INFO) << "MtprotoClient::tear_down";
+  if (G()->have_net_query_dispatcher()) {
+    G()->net_query_dispatcher().stop();
+  }
+  // Do NOT destroy the dispatcher here — session actors may still be processing
+  // during scheduler shutdown. The Global destructor will clean it up.
+}
+
+void MtprotoClient::request_updates_state() {
+  LOG(INFO) << "Requesting updates.getState for sync";
+  send(telegram_api::make_object<telegram_api::updates_getState>(),
+       PromiseCreator::lambda(
+           [self = actor_id(this)](Result<tl_object_ptr<telegram_api::updates_state>> r_state) mutable {
+             if (r_state.is_error()) {
+               LOG(ERROR) << "updates.getState failed: " << r_state.error();
+               return;
+             }
+             auto state = r_state.move_as_ok();
+             LOG(INFO) << "updates.getState: pts=" << state->pts_ << " qts=" << state->qts_ << " date=" << state->date_
+                       << " seq=" << state->seq_;
+             send_closure(self, &MtprotoClient::request_difference, state->pts_, state->date_, state->qts_);
+           }));
+}
+
+void MtprotoClient::request_difference(int32 pts, int32 date, int32 qts) {
+  LOG(INFO) << "Requesting updates.getDifference pts=" << pts << " date=" << date << " qts=" << qts;
+  send(telegram_api::make_object<telegram_api::updates_getDifference>(0, pts, 0, 0, date, qts, 0),
+       PromiseCreator::lambda([](Result<tl_object_ptr<telegram_api::updates_Difference>> r_diff) {
+         if (r_diff.is_error()) {
+           LOG(ERROR) << "updates.getDifference failed: " << r_diff.error();
+           return;
+         }
+         auto diff = r_diff.move_as_ok();
+         switch (diff->get_id()) {
+           case telegram_api::updates_differenceEmpty::ID:
+             LOG(INFO) << "getDifference: empty — caught up with server";
+             break;
+           case telegram_api::updates_difference::ID: {
+             auto *d = static_cast<telegram_api::updates_difference *>(diff.get());
+             LOG(INFO) << "getDifference: " << d->new_messages_.size() << " messages, " << d->other_updates_.size()
+                       << " other updates";
+             break;
+           }
+           case telegram_api::updates_differenceSlice::ID: {
+             auto *d = static_cast<telegram_api::updates_differenceSlice *>(diff.get());
+             LOG(INFO) << "getDifference: slice with " << d->new_messages_.size() << " messages";
+             break;
+           }
+           case telegram_api::updates_differenceTooLong::ID:
+             LOG(INFO) << "getDifference: too long — some updates skipped";
+             break;
+           default:
+             break;
+         }
+       }));
 }
 
 }  // namespace td

@@ -13,6 +13,7 @@
 
 #include "td/utils/logging.h"
 
+#include <atomic>
 #include <mutex>
 
 namespace mtproto {
@@ -27,14 +28,15 @@ struct Client::Impl {
 
   td::unique_ptr<td::ConcurrentScheduler> scheduler;
   td::MtprotoClient *actor_raw = nullptr;  // valid only while event loop is running
-  bool running = false;
+  td::ActorId<td::MtprotoClient> actor_id;
+  std::atomic<bool> running{false};
 
   std::mutex pending_mutex;
   string pending_code;
   bool has_pending_code = false;
 
-  string exported_session;
-  bool has_exported_session = false;
+  string pending_password;
+  bool has_pending_password = false;
 };
 
 Client::Client(Options options) : impl_(std::make_unique<Impl>()) {
@@ -47,18 +49,13 @@ Client::Client(Options options) : impl_(std::make_unique<Impl>()) {
   impl_->actor_options.application_version = std::move(options.application_version);
   impl_->actor_options.system_language_code = std::move(options.system_language_code);
   impl_->actor_options.language_code = std::move(options.language_code);
+  impl_->session_data = std::move(options.session_data);
 }
 
 Client::~Client() = default;
 
 std::unique_ptr<Client> Client::create(Options options) {
   return std::unique_ptr<Client>(new Client(std::move(options)));
-}
-
-std::unique_ptr<Client> Client::create(Options options, string session_data) {
-  auto client = std::unique_ptr<Client>(new Client(std::move(options)));
-  client->impl_->session_data = std::move(session_data);
-  return client;
 }
 
 void Client::auth_with_bot_token(string bot_token) {
@@ -75,13 +72,14 @@ void Client::submit_auth_code(string code) {
   impl_->has_pending_code = true;
 }
 
-void Client::on_update(std::function<void(tl_object_ptr<td::telegram_api::Updates>)> handler) {
-  impl_->update_handler = std::move(handler);
+void Client::submit_password(string password) {
+  std::lock_guard<std::mutex> lock(impl_->pending_mutex);
+  impl_->pending_password = std::move(password);
+  impl_->has_pending_password = true;
 }
 
-string Client::export_session() {
-  std::lock_guard<std::mutex> lock(impl_->pending_mutex);
-  return impl_->exported_session;
+void Client::on_update(std::function<void(tl_object_ptr<td::telegram_api::Updates>)> handler) {
+  impl_->update_handler = std::move(handler);
 }
 
 void Client::on_auth_state(std::function<void(int state, const string &info)> handler) {
@@ -101,6 +99,7 @@ void Client::run() {
   auto actor = impl_->scheduler->create_actor_unsafe<td::MtprotoClient>(0, "MtprotoClient", std::move(opts));
   auto *raw = actor.get_actor_unsafe();
   impl_->actor_raw = raw;
+  impl_->actor_id = actor.get();
 
   if (impl_->update_handler) {
     raw->set_update_handler(impl_->update_handler);
@@ -113,12 +112,19 @@ void Client::run() {
   impl_->running = true;
 
   while (impl_->running && impl_->scheduler->run_main(10)) {
-    std::lock_guard<std::mutex> lock(impl_->pending_mutex);
-    if (impl_->has_pending_code) {
-      impl_->actor_raw->check_code(std::move(impl_->pending_code));
-      impl_->has_pending_code = false;
+    {
+      std::lock_guard<std::mutex> lock(impl_->pending_mutex);
+      if (impl_->has_pending_code) {
+        auto guard = impl_->scheduler->get_main_guard();
+        td::send_closure(impl_->actor_id, &td::MtprotoClient::check_code, std::move(impl_->pending_code));
+        impl_->has_pending_code = false;
+      }
+      if (impl_->has_pending_password) {
+        auto guard = impl_->scheduler->get_main_guard();
+        td::send_closure(impl_->actor_id, &td::MtprotoClient::check_password, std::move(impl_->pending_password));
+        impl_->has_pending_password = false;
+      }
     }
-    impl_->exported_session = impl_->actor_raw->export_session();
   }
 
   impl_->actor_raw = nullptr;
@@ -128,6 +134,13 @@ void Client::run() {
 
 void Client::stop() {
   impl_->running = false;
+}
+
+string Client::export_session() {
+  if (impl_->actor_raw) {
+    return impl_->actor_raw->export_session();
+  }
+  return {};
 }
 
 }  // namespace mtproto

@@ -27,6 +27,7 @@ namespace td {
 
 class AuthManager;
 class ConfigManager;
+class TdDb;
 
 // Helper actor that receives a NetQuery result and forwards to a Promise<BufferSlice>
 class QueryResultHandler final : public NetQueryCallback {
@@ -61,7 +62,7 @@ class MtprotoClient final : public Actor {
     string language_code = "en";
     string bot_token;     // if non-empty, authenticate as bot on start
     string phone_number;  // if non-empty, start phone auth on start
-    string session_data;  // if non-empty, restore session from this base64 string
+    string session_data;  // if non-empty, raw binary session data to restore
   };
 
   explicit MtprotoClient(Options options);
@@ -112,6 +113,7 @@ class MtprotoClient final : public Actor {
   // Phone authentication
   void send_code(string phone_number);
   void check_code(string code);
+  void check_password(string password);
 
   // Auth state callback (forwarded from AuthManager)
   using AuthStateCallback = std::function<void(int state, const string &info)>;
@@ -121,7 +123,7 @@ class MtprotoClient final : public Actor {
   using UpdateHandler = std::function<void(tl_object_ptr<telegram_api::Updates>)>;
   void set_update_handler(UpdateHandler handler);
 
-  // Export current session state as base64 string
+  // Export current session state as raw binary
   string export_session() const;
 
   ActorShared<MtprotoClient> create_reference();
@@ -129,7 +131,9 @@ class MtprotoClient final : public Actor {
  private:
   Options options_;
   UpdateHandler update_handler_;
+  AuthStateCallback pending_auth_state_callback_;
   std::shared_ptr<ActorContext> old_context_;
+  TdDb *td_db_raw_ = nullptr;
 
   ActorOwn<ConfigManager> config_manager_;
 
@@ -146,6 +150,10 @@ class MtprotoClient final : public Actor {
   void hangup_shared() final;
 
   void init();
+
+  // Update synchronization: called after auth succeeds
+  void request_updates_state();
+  void request_difference(int32 pts, int32 date, int32 qts);
 };
 
 }  // namespace td

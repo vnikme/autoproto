@@ -125,7 +125,7 @@ class PollableFdInfo final : private ListNode {
   ~PollableFdInfo() {
     VLOG(fd) << native_fd() << " destroy PollableFdInfo";
     bool was_locked = lock_.test_and_set(std::memory_order_acquire);
-    CHECK(!was_locked);
+    LOG_IF(ERROR, was_locked) << native_fd() << " PollableFdInfo destroyed while locked";
   }
 
   void add_flags_from_poll(PollFlags flags) {

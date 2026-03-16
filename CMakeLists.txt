@@ -482,6 +482,11 @@ add_executable(channel_crawler examples/channel_crawler.cpp)
 target_link_libraries(channel_crawler PRIVATE mtproto)
 set_target_properties(channel_crawler PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
+# Userbot example
+add_executable(userbot examples/userbot.cpp)
+target_link_libraries(userbot PRIVATE mtproto)
+set_target_properties(userbot PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
 set(TD_CORE_PART_TARGETS)
 
 # Convenience target: regenerate all TL bindings from schema files

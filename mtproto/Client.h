@@ -16,6 +16,9 @@
 //   client->on_update([](auto update) { /* handle updates */ });
 //   client->run();
 //
+// Session persistence: set Options::session_data to previously exported binary.
+// After auth, call export_session() to get the current session for saving.
+//
 #pragma once
 
 #include "td/telegram/telegram_api.h"
@@ -44,13 +47,11 @@ class Client {
     string application_version = "1.0";
     string system_language_code = "en";
     string language_code = "en";
+    string session_data;  // if non-empty, raw binary session data to restore
   };
 
   // Create a new client instance
   static std::unique_ptr<Client> create(Options options);
-
-  // Create a client restoring from a previous session
-  static std::unique_ptr<Client> create(Options options, string session_data);
 
   ~Client();
   Client(const Client &) = delete;
@@ -65,14 +66,17 @@ class Client {
   // Submit verification code (thread-safe, call from auth state callback)
   void submit_auth_code(string code);
 
-  // Export current session state as an opaque base64 string
-  string export_session();
+  // Submit 2FA password (thread-safe, call from auth state callback)
+  void submit_password(string password);
 
   // Set handler for incoming server updates
   void on_update(std::function<void(tl_object_ptr<td::telegram_api::Updates>)> handler);
 
-  // Auth state callback: state 0=WaitPhone, 1=WaitCode, 2=Ok, 3=Error
+  // Auth state callback: state 0=WaitPhone, 1=WaitCode, 2=Ok, 3=Error, 4=WaitPassword
   void on_auth_state(std::function<void(int state, const string &info)> handler);
+
+  // Export current session as raw binary (call from auth callback or after run)
+  string export_session();
 
   // Run the event loop (blocks until stop() is called)
   void run();

@@ -5,14 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 // In-memory key-value store replacing TDLib's SQLite/Binlog persistence.
-// Session state is exported/imported as an opaque string for caller-managed persistence.
+// Session state is exported/imported as a raw binary string for caller-managed persistence.
 //
 #pragma once
 
-#include "td/utils/base64.h"
 #include "td/utils/common.h"
 #include "td/utils/FlatHashMap.h"
 #include "td/utils/HashTableUtils.h"
+#include "td/utils/logging.h"
 #include "td/utils/Promise.h"
 #include "td/utils/Slice.h"
 
@@ -183,7 +183,7 @@ class TdDb {
     is_test_dc_ = is_test;
   }
 
-  // Export all session state as a base64 string
+  // Export all session state as a raw binary string
   string export_session() const {
     // Format: [4 bytes binlog_len][binlog_data][config_data]
     auto binlog_data = binlog_pmc_->serialize_all();
@@ -193,30 +193,31 @@ class TdDb {
     raw.append(reinterpret_cast<const char *>(&binlog_len), 4);
     raw.append(binlog_data);
     raw.append(config_data);
-    return base64_encode(raw);
+    return raw;
   }
 
-  // Import session state from a base64 string
-  bool import_session(Slice session_str) {
-    auto r_raw = base64_decode(session_str);
-    if (r_raw.is_error()) {
-      return false;
-    }
-    auto raw = r_raw.move_as_ok();
+  // Import session state from a raw binary string
+  bool import_session(Slice raw) {
     if (raw.size() < 4) {
+      LOG(ERROR) << "Session import: data too short (" << raw.size() << " bytes)";
       return false;
     }
     uint32 binlog_len;
     std::memcpy(&binlog_len, raw.data(), 4);
     if (4 + binlog_len > raw.size()) {
+      LOG(ERROR) << "Session import: binlog length " << binlog_len << " exceeds data size " << (raw.size() - 4);
       return false;
     }
     if (!binlog_pmc_->deserialize_all(Slice(raw.data() + 4, binlog_len))) {
+      LOG(ERROR) << "Session import: binlog deserialization failed (" << binlog_len << " bytes)";
       return false;
     }
-    if (!config_pmc_->deserialize_all(Slice(raw.data() + 4 + binlog_len, raw.size() - 4 - binlog_len))) {
+    auto config_len = raw.size() - 4 - binlog_len;
+    if (!config_pmc_->deserialize_all(Slice(raw.data() + 4 + binlog_len, config_len))) {
+      LOG(ERROR) << "Session import: config deserialization failed (" << config_len << " bytes)";
       return false;
     }
+    LOG(INFO) << "Session import: binlog=" << binlog_len << " bytes, config=" << config_len << " bytes";
     return true;
   }
 

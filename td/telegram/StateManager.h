@@ -48,8 +48,18 @@ class StateManager final : public mtproto::ConnectionManager {
   void on_network_updated() {
   }
   void on_network(NetType new_network_type) {
+    network_type_ = new_network_type;
+    network_flag_ = network_type_ != NetType::None;
+    network_generation_++;
+    for (auto &cb : callbacks_) {
+      cb->on_network(network_type_, network_generation_);
+    }
   }
   void on_online(bool is_online) {
+    online_flag_ = is_online;
+    for (auto &cb : callbacks_) {
+      cb->on_online(is_online);
+    }
   }
   void on_proxy(bool use_proxy) {
   }
@@ -57,6 +67,8 @@ class StateManager final : public mtproto::ConnectionManager {
   }
 
   void add_callback(unique_ptr<Callback> net_callback) {
+    net_callback->on_network(network_type_, network_generation_);
+    net_callback->on_online(online_flag_);
     callbacks_.push_back(std::move(net_callback));
   }
 
@@ -71,6 +83,7 @@ class StateManager final : public mtproto::ConnectionManager {
   ActorShared<> parent_;
   bool sync_flag_ = true;
   bool network_flag_ = true;
+  bool online_flag_ = false;
   NetType network_type_ = NetType::Unknown;
   uint32 network_generation_ = 1;
 
