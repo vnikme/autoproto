@@ -1,0 +1,320 @@
+[1;36m[ 3][t 0][1773649959.811753034][MtprotoClient.cpp:33][!MtprotoClient]	MtprotoClient::start_up — wiring MTProto stack[0m
+[1;36m[ 3][t 0][1773649959.811854362][MtprotoClient.cpp:52][!MtprotoClient]	Session import: attempting to restore from 4377 chars[0m
+[1;36m[ 3][t 0][1773649959.811901807][TdDb.h:220][!MtprotoClient]	Session import: binlog=4373 bytes, config=0 bytes[0m
+[1;36m[ 3][t 0][1773649959.811922788][MtprotoClient.cpp:56][!MtprotoClient]	Session data imported successfully (4377 chars)[0m
+[1;36m[ 3][t 0][1773649959.812130212][MtprotoClient.cpp:116][!MtprotoClient]	Session has valid auth key for DC2 — skipping auth flow[0m
+[1;36m[ 3][t 0][1773649959.812541246][MtprotoClient.cpp:124][!MtprotoClient]	MtprotoClient initialized — MTProto stack wired[0m
+[1;36m[ 3][t 0][1773649959.816733360][NetQueryCreator.cpp:45][!ConfigManager]	Create query help.getConfig {
+}[0m
+[1;36m[ 3][t 0][1773649959.816815614][NetQuery.cpp:57][!ConfigManager]	[Query:[id:65536][tl:0xc4f9186b]][0m
+[1;33m[ 2][t 0][1773649959.819261074][AuthDataShared.cpp:118][!ConfigManager]	DcId{4} [auth_key_id:826276419262093052][state:OK][created_at:1773619255][last_used:1773736256][0m
+[1;36m[ 3][t 0][1773649959.819328308][NetQuery.cpp:28][!ConfigManager][&net_query]	[Query:[id:65536][tl:0xc4f9186b]] [sent to main session multi proxy DcId{4}][0m
+[1;36m[ 3][t 0][1773649959.819357872][ConnectionCreator.cpp:615][!ConnectionCreator][&connections]	Receive network flag true with generation 2[0m
+[1;36m[ 3][t 0][1773649959.819378614][ConnectionCreator.cpp:620][!ConnectionCreator][&connections]	Set proxy query token to 0: 0 2[0m
+[1;36m[ 3][t 0][1773649959.819400787][ConnectionCreator.cpp:639][!ConnectionCreator][&connections]	Receive online flag true[0m
+[ 4][t 2][1773649959.820912122][AuthData.cpp:86][!SessionProxy:4:main]	Reset server time difference: 0.000000 -> 1773647533.166184
+[1;33m[ 2][t 2][1773649959.821032047][Session.cpp:267][!SessionProxy:4:main]	Generate new session_id 12333254348278093694 for auth key 826276419262093052 for main DC4[0m
+[1;36m[ 3][t 2][1773649959.821056127][NetQuery.cpp:28][!SessionProxy:4:main][&net_query]	[Query:[id:65536][tl:0xc4f9186b]] [SessionProxy:4:main: sent to session][0m
+[1;36m[ 3][t 2][1773649959.821087360][Session.cpp:376][!Session:4:main][&net_query]	Receive query [Query:[id:65536][tl:0xc4f9186b]][0m
+[1;36m[ 3][t 2][1773649959.821102857][NetQuery.cpp:28][!Session:4:main][&net_query]	[Query:[id:65536][tl:0xc4f9186b]] [Session:4:main: pending][0m
+[ 4][t 2][1773649959.821141719][Session.cpp:340][!Session:4:main]	Set online flag to true
+[1;36m[ 3][t 0][1773649959.821157217][ConnectionCreator.cpp:702][!ConnectionCreator][&connections]	Request connection for [client:0xc03f3f34] to DcId{4} [allow_media_only:false][0m
+[1;36m[ 3][t 0][1773649959.821217298][ConnectionCreator.cpp:907][!ConnectionCreator][&connections]	In client_loop: [client:0xc03f3f34][0m
+[ 4][t 0][1773649959.821244001][DcOptionsSet.cpp:56][!ConnectionCreator]	Find all connections in DcId{4}. use_static = false, prefer_ipv6 = false, only_http = false
+[ 4][t 0][1773649959.821260213][DcOptionsSet.cpp:75][!ConnectionCreator]	Skip media only option
+[ 4][t 0][1773649959.821271419][DcOptionsSet.cpp:75][!ConnectionCreator]	Skip media only option
+[1;36m[ 3][t 0][1773649959.821307182][ConnectionCreator.cpp:798][!ConnectionCreator][&connections]	Create: [149.154.167.91:443] to DcId{4}[0m
+[1;36m[ 3][t 0][1773649959.821465015][ConnectionCreator.cpp:878][!ConnectionCreator][&connections]	Create new direct connection [149.154.167.91:443] to DcId{4} from [192.168.54.126:40154][0m
+[ 4][t 0][1773649959.821528911][RawConnection.cpp:46][!ConnectionCreator]	Create raw connection 0x653de6947990
+[1;36m[ 3][t 0][1773649959.821593284][ConnectionCreator.cpp:1045][!ConnectionCreator][&connections]	Ready connection (unchecked) 0x653de6947990 [rtt:0.0ns] [149.154.167.91:443] to DcId{4} from [192.168.54.126:40154][0m
+[1;36m[ 3][t 0][1773649959.821658849][ConnectionCreator.cpp:1098][!ConnectionCreator][&connections]	Add ready connection 0x653de6947990 for [client:0xc03f3f34][0m
+[1;36m[ 3][t 0][1773649959.821709871][ConnectionCreator.cpp:907][!ConnectionCreator][&connections]	In client_loop: [client:0xc03f3f34][0m
+[1;36m[ 3][t 0][1773649959.821731805][ConnectionCreator.cpp:923][!ConnectionCreator][&connections]	Send to promise [connection:0x653de6947990][0m
+[1;36m[ 3][t 2][1773649959.821770191][Session.cpp:1285][!Session:4:main]	Finished to open connection Session:4:main::Connect::TCP::[149.154.167.91:443] to DcId{4} from [192.168.54.126:40154][0m
+[ 4][t 2][1773649959.821892499][SessionConnection.cpp:793][!Session:4:main]	Set online to true
+[1;36m[ 3][t 2][1773649959.821921348][NetQuery.cpp:28][!Session:4:main][&net_query]	[Query:[id:65536][tl:0xc4f9186b]] [Session:4:main: send to [149.154.167.91:443] to DcId{4} from [192.168.54.126:40154]][0m
+[ 4][t 2][1773649959.821952342][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c027d27bb650 at 2426.655768
+[1;36m[ 3][t 2][1773649959.821971893][Session.cpp:1164][!Session:4:main][&net_query]	Send query to connection [Query:[id:65536][tl:0xc4f9186b][msg_id:0x69b7c027d27bb650]][invoke_after:{}][0m
+[ 4][t 2][1773649959.822000503][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c027d27bc528 at 2426.655816
+[ 4][t 2][1773649959.822018384][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c027d27bc668 at 2426.655834
+[ 4][t 2][1773649959.822032928][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c027d27bd280 at 2426.655849
+[ 4][t 2][1773649959.822109460][BufferedFd.h:142][!Session:4:main]	Can't flush write to [fd:13] with flags = []
+[ 4][t 2][1773649959.822120904][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 129.1us ago/never, last read was 132.4us ago/never, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1999.9ms, wakeup in 1999.9ms
+[ 4][t 2][1773649959.847403049][BufferedFd.h:215][!Session:4:main]	Flush write: +284B[left:0B]
+[ 4][t 2][1773649959.847423076][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 25.4ms ago/never, last read was 25.4ms ago/never, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1974.6ms, wakeup in 1974.6ms
+[ 4][t 2][1773649959.872995138][BufferedFd.h:206][!Session:4:main]	Flush read: +204B[total:204B]
+[ 4][t 2][1773649959.873090267][AuthData.cpp:155][!Session:4:main]	Receive packet in message 0x69b7c027dca41009 from session 12333254348278093694 at 2426.706905
+[ 4][t 2][1773649959.873118400][AuthData.cpp:72][!Session:4:main]	Set server time difference: 1773647533.166184 -> 1773647532.293095
+[ 4][t 2][1773649959.873130083][AuthData.cpp:81][!Session:4:main]	New server time: 1773649959.000041
+[1;36m[ 3][t 2][1773649959.873147249][Session.cpp:704][!Session:4:main]	New session 17457826119429846470 created with first message 0x69b7c027d27bb650[0m
+[ 4][t 2][1773649959.873162746][Session.cpp:709][!Session:4:main]	Sending updatesTooLong to force getDifference
+[1;36m[ 3][t 2][1773649959.873229503][Session.cpp:718][!Session:4:main]	Update first message to container's message 0x69b7c027d27bd280[0m
+[1;36m[ 3][t 2][1773649959.873257637][Session.cpp:789][!Session:4:main][&net_query]	Ack [Query:[id:65536][tl:0xc4f9186b][msg_id:0x69b7c027d27bb650]][0m
+[1;36m[ 3][t 0][1773649959.873251914][MtprotoClient.cpp:136][!MtprotoClient]	MtprotoClient::on_update type_id=-484987010[0m
+[ 4][t 2][1773649959.873280286][BufferedFd.h:140][!Session:4:main]	Nothing to write to [fd:13]
+[ 4][t 2][1773649959.873317003][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 64.3us ago/70.3us ago, last read was 288.3us ago/290.3us ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1948.7ms, wakeup in 1948.7ms
+[ 4][t 2][1773649959.878806829][BufferedFd.h:206][!Session:4:main]	Flush read: +620B[total:620B]
+[ 4][t 2][1773649959.878894090][AuthData.cpp:155][!Session:4:main]	Receive packet in message 0x69b7c027de0df401 from session 12333254348278093694 at 2426.712709
+[1;36m[ 3][t 2][1773649959.879027128][Session.cpp:897][!Session:4:main][&net_query]	Return query result [Query:[id:65536][tl:0xc4f9186b][msg_id:0x69b7c027d27bb650]][0m
+[1;36m[ 3][t 2][1773649959.879073381][NetQuery.cpp:96][!Session:4:main][&net_query]	Receive answer [Query:[id:65536][tl:0xc4f9186b][msg_id:0x69b7c027d27bb650]][0m
+[1;36m[ 3][t 2][1773649959.879098176][NetQuery.cpp:28][!Session:4:main][&net_query]	[Query:[id:65536][tl:0xc4f9186b][result_tl:0xcc1a241e]] [sent to callback][0m
+[ 4][t 2][1773649959.879128456][BufferedFd.h:140][!Session:4:main]	Nothing to write to [fd:13]
+[ 4][t 2][1773649959.879140138][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 217.0us ago/224.1us ago, last read was 307.0us ago/309.5us ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1942.8ms, wakeup in 1942.8ms
+[1;36m[ 3][t 0][1773649959.879199743][ConnectionCreator.cpp:1146][!ConnectionCreator][&connections]	SAVE DcOptions{}[0m
+[1;36m[ 3][t 0][1773649959.879340410][ConfigManager.cpp:263][!ConfigManager]	config {
+  flags = 101960
+  default_p2p_contacts = true
+  revoke_pm_inbox = true
+  date = 1773649959
+  expires = 1773653774
+  test_mode = false
+  this_dc = 4
+  dc_options = vector[23] {
+    dcOption {
+      flags = 0
+      id = 1
+      ip_address = "149.154.175.60"
+      port = 443
+    }
+    dcOption {
+      flags = 16
+      static = true
+      id = 1
+      ip_address = "149.154.175.54"
+      port = 443
+    }
+    dcOption {
+      flags = 1
+      ipv6 = true
+      id = 1
+      ip_address = "2001:0b28:f23d:f001:0000:0000:0000:000a"
+      port = 443
+    }
+    dcOption {
+      flags = 2
+      media_only = true
+      id = 1
+      ip_address = "149.154.175.211"
+      port = 443
+    }
+    dcOption {
+      flags = 3
+      ipv6 = true
+      media_only = true
+      id = 1
+      ip_address = "2001:0b28:f23d:f001:0000:0000:0000:0007"
+      port = 443
+    }
+    dcOption {
+      flags = 0
+      id = 2
+      ip_address = "149.154.167.51"
+      port = 443
+    }
+    dcOption {
+      flags = 16
+      static = true
+      id = 2
+      ip_address = "149.154.167.41"
+      port = 443
+    }
+    dcOption {
+      flags = 2
+      media_only = true
+      id = 2
+      ip_address = "149.154.167.35"
+      port = 443
+    }
+    dcOption {
+      flags = 1
+      ipv6 = true
+      id = 2
+      ip_address = "2001:067c:04e8:f002:0000:0000:0000:000a"
+      port = 443
+    }
+    dcOption {
+      flags = 3
+      ipv6 = true
+      media_only = true
+      id = 2
+      ip_address = "2001:067c:04e8:f002:0000:0000:0000:0007"
+      port = 443
+    }
+    dcOption {
+      flags = 0
+      id = 3
+      ip_address = "149.154.175.100"
+      port = 443
+    }
+    dcOption {
+      flags = 16
+      static = true
+      id = 3
+      ip_address = "149.154.175.100"
+      port = 443
+    }
+    dcOption {
+      flags = 1
+      ipv6 = true
+      id = 3
+      ip_address = "2001:0b28:f23d:f003:0000:0000:0000:000a"
+      port = 443
+    }
+    dcOption {
+      flags = 0
+      id = 4
+      ip_address = "149.154.167.92"
+      port = 443
+    }
+    dcOption {
+      flags = 16
+      static = true
+      id = 4
+      ip_address = "149.154.167.92"
+      port = 443
+    }
+    dcOption {
+      flags = 1
+      ipv6 = true
+      id = 4
+      ip_address = "2001:067c:04e8:f004:0000:0000:0000:000a"
+      port = 443
+    }
+    dcOption {
+      flags = 2
+      media_only = true
+      id = 4
+      ip_address = "149.154.167.255"
+      port = 443
+    }
+    dcOption {
+      flags = 3
+      ipv6 = true
+      media_only = true
+      id = 4
+      ip_address = "2001:067c:04e8:f004:0000:0000:0000:0007"
+      port = 443
+    }
+    dcOption {
+      flags = 1
+      ipv6 = true
+      id = 5
+      ip_address = "2001:0b28:f23f:f005:0000:0000:0000:000a"
+      port = 443
+    }
+    dcOption {
+      flags = 0
+      id = 5
+      ip_address = "91.108.56.195"
+      port = 443
+    }
+    dcOption {
+      flags = 16
+      static = true
+      id = 5
+      ip_address = "91.108.56.195"
+      port = 443
+    }
+    dcOption {
+      flags = 2
+      media_only = true
+      id = 5
+      ip_address = "149.154.171.255"
+      port = 443
+    }
+    dcOption {
+      flags = 3
+      ipv6 = true
+      media_only = true
+      id = 5
+      ip_address = "2001:0b28:f23f:f005:0000:0000:0000:0007"
+      port = 443
+    }
+  }
+  dc_txt_domain_name = "apv3.stel.com"
+  chat_size_max = 200
+  megagroup_size_max = 200000
+  forwarded_count_max = 100
+  online_update_period_ms = 210000
+  offline_blur_timeout_ms = 5000
+  offline_idle_timeout_ms = 30000
+  online_cloud_timeout_ms = 300000
+  notify_cloud_delay_ms = 30000
+  notify_default_delay_ms = 1500
+  push_chat_period_ms = 60000
+  push_chat_limit = 2
+  edit_time_limit = 172800
+  revoke_time_limit = 2147483647
+  revoke_pm_time_limit = 2147483647
+  rating_e_decay = 2419200
+  stickers_recent_limit = 200
+  channels_read_media_period = 604800
+  call_receive_timeout_ms = 20000
+  call_ring_timeout_ms = 90000
+  call_connect_timeout_ms = 30000
+  call_packet_timeout_ms = 10000
+  me_url_prefix = "https://t.me/"
+  gif_search_username = "gif"
+  venue_search_username = "foursquare"
+  img_search_username = "bing"
+  caption_length_max = 4096
+  message_length_max = 4096
+  webfile_dc_id = 4
+  reactions_default = reactionEmoji {
+    emoticon = "❤"
+  }
+  autologin_token = "xotvhM8CTjZwkdtbbNBZ4jdZkT6AQQN8iM6MkHkzzqppt8AnFgAAAAHg-x9fAEGtL9OXc3WmdiV2H27HYyvSGjCDdX2w0m_QpOg408ew"
+}[0m
+[1;36m[ 3][t 0][1773649959.879460811][ConnectionCreator.cpp:1146][!ConnectionCreator][&connections]	SAVE DcOptions{[DcOption:DcId{1}[ip:149.154.175.60][port:443][secret_len:0][flags:]], [DcOption:DcId{1}[ip:149.154.175.54][port:443][secret_len:0][flags:(Static)]], [DcOption:DcId{1}[ip:149.154.175.211][port:443][secret_len:0][flags:(MediaOnly)]], [DcOption:DcId{1}[ip:2001:b28:f23d:f001::a][port:443][secret_len:0][flags:(IPv6)]], [DcOption:DcId{1}[ip:2001:b28:f23d:f001::7][port:443][secret_len:0][flags:(MediaOnly)(IPv6)]], [DcOption:DcId{2}[ip:149.154.167.51][port:443][secret_len:0][flags:]], [DcOption:DcId{2}[ip:149.154.167.41][port:443][secret_len:0][flags:(Static)]], [DcOption:DcId{2}[ip:149.154.167.35][port:443][secret_len:0][flags:(MediaOnly)]], [DcOption:DcId{2}[ip:2001:67c:4e8:f002::a][port:443][secret_len:0][flags:(IPv6)]], [DcOption:DcId{2}[ip:2001:67c:4e8:f002::7][port:443][secret_len:0][flags:(MediaOnly)(IPv6)]], [DcOption:DcId{3}[ip:149.154.175.100][port:443][secret_len:0][flags:]], [DcOption:DcId{3}[ip:149.154.175.100][port:443][secret_len:0][flags:(Static)]], [DcOption:DcId{3}[ip:2001:b28:f23d:f003::a][port:443][secret_len:0][flags:(IPv6)]], [DcOption:DcId{4}[ip:149.154.167.92][port:443][secret_len:0][flags:]], [DcOption:DcId{4}[ip:149.154.167.92][port:443][secret_len:0][flags:(Static)]], [DcOption:DcId{4}[ip:149.154.167.255][port:443][secret_len:0][flags:(MediaOnly)]], [DcOption:DcId{4}[ip:2001:67c:4e8:f004::a][port:443][secret_len:0][flags:(IPv6)]], [DcOption:DcId{4}[ip:2001:67c:4e8:f004::7][port:443][secret_len:0][flags:(MediaOnly)(IPv6)]], [DcOption:DcId{5}[ip:91.108.56.195][port:443][secret_len:0][flags:]], [DcOption:DcId{5}[ip:91.108.56.195][port:443][secret_len:0][flags:(Static)]], [DcOption:DcId{5}[ip:149.154.171.255][port:443][secret_len:0][flags:(MediaOnly)]], [DcOption:DcId{5}[ip:2001:b28:f23f:f005::a][port:443][secret_len:0][flags:(IPv6)]], [DcOption:DcId{5}[ip:2001:b28:f23f:f005::7][port:443][secret_len:0][flags:(MediaOnly)(IPv6)]]}[0m
+[ 4][t 2][1773649961.824239730][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c028f340af00 at 2428.658053
+[ 4][t 2][1773649961.824321031][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c028f389bd9c at 2428.658137
+[ 4][t 2][1773649961.824331998][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c028f3bde288 at 2428.658148
+[ 4][t 2][1773649961.824340343][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c028f3bde3e8 at 2428.658156
+[ 4][t 2][1773649961.824476242][BufferedFd.h:215][!Session:4:main]	Flush write: +156B[left:0B]
+[ 4][t 2][1773649961.824493169][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 1945.6ms ago/1945.6ms ago, last read was 1945.7ms ago/1945.7ms ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1999.7ms, wakeup in 1999.7ms
+[ 4][t 2][1773649961.851418733][BufferedFd.h:206][!Session:4:main]	Flush read: +92B[total:92B]
+[ 4][t 2][1773649961.851495504][AuthData.cpp:155][!Session:4:main]	Receive packet in message 0x69b7c029d6d2c001 from session 12333254348278093694 at 2428.685310
+[ 4][t 2][1773649961.851520061][AuthData.cpp:76][!Session:4:main]	Update server time difference: 1773647532.293095 -> 1773647532.314690
+[ 4][t 2][1773649961.851527929][AuthData.cpp:81][!Session:4:main]	New server time: 1773649961.000035
+[ 4][t 2][1773649961.851542234][BufferedFd.h:140][!Session:4:main]	Nothing to write to [fd:13]
+[ 4][t 2][1773649961.851548194][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 11.6us ago/13.7us ago, last read was 95.2us ago/96.2us ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1972.7ms, wakeup in 1972.7ms
+[ 4][t 2][1773649963.826751232][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c02af9baa2a0 at 2430.660564
+[ 4][t 2][1773649963.826844930][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c02af9bab4c8 at 2430.660660
+[ 4][t 2][1773649963.826987028][BufferedFd.h:215][!Session:4:main]	Flush write: +92B[left:0B]
+[ 4][t 2][1773649963.827009439][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 1975.5ms ago/1975.5ms ago, last read was 1975.6ms ago/1975.6ms ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1999.7ms, wakeup in 1999.7ms
+[ 4][t 2][1773649963.854543209][BufferedFd.h:206][!Session:4:main]	Flush read: +92B[total:92B]
+[ 4][t 2][1773649963.854644298][AuthData.cpp:155][!Session:4:main]	Receive packet in message 0x69b7c02bd7b39c01 from session 12333254348278093694 at 2430.688459
+[ 4][t 2][1773649963.854686498][BufferedFd.h:140][!Session:4:main]	Nothing to write to [fd:13]
+[ 4][t 2][1773649963.854699850][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 19.3us ago/22.2us ago, last read was 105.2us ago/106.9us ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1972.0ms, wakeup in 1972.0ms
+[ 4][t 2][1773649965.829880952][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c02cfa5c890c at 2432.663694
+[ 4][t 2][1773649965.829961776][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c02cfa5c94ac at 2432.663777
+[ 4][t 2][1773649965.830092191][BufferedFd.h:215][!Session:4:main]	Flush write: +92B[left:0B]
+[ 4][t 2][1773649965.830113649][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 1975.4ms ago/1975.4ms ago, last read was 1975.5ms ago/1975.5ms ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1999.7ms, wakeup in 1999.7ms
+[ 4][t 2][1773649965.858122825][BufferedFd.h:206][!Session:4:main]	Flush read: +92B[total:92B]
+[ 4][t 2][1773649965.858232259][AuthData.cpp:155][!Session:4:main]	Receive packet in message 0x69b7c02dd8978401 from session 12333254348278093694 at 2432.692047
+[ 4][t 2][1773649965.858275413][BufferedFd.h:140][!Session:4:main]	Nothing to write to [fd:13]
+[ 4][t 2][1773649965.858285427][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 15.9us ago/19.0us ago, last read was 122.5us ago/124.8us ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1971.6ms, wakeup in 1971.6ms
+[ 4][t 2][1773649967.832489013][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c02efb1eb720 at 2434.666302
+[ 4][t 2][1773649967.832571268][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c02efb3fa068 at 2434.666387
+[ 4][t 2][1773649967.832697868][BufferedFd.h:215][!Session:4:main]	Flush write: +92B[left:0B]
+[ 4][t 2][1773649967.832718849][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 1974.4ms ago/1974.5ms ago, last read was 1974.6ms ago/1974.6ms ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1999.7ms, wakeup in 1999.7ms
+[ 4][t 2][1773649967.891177415][BufferedFd.h:206][!Session:4:main]	Flush read: +92B[total:92B]
+[ 4][t 2][1773649967.891324520][AuthData.cpp:155][!Session:4:main]	Receive packet in message 0x69b7c02fda5e1801 from session 12333254348278093694 at 2434.725139
+[ 4][t 2][1773649967.891362905][BufferedFd.h:140][!Session:4:main]	Nothing to write to [fd:13]
+[ 4][t 2][1773649967.891370773][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 13.9us ago/16.7us ago, last read was 98.4us ago/99.9us ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1941.1ms, wakeup in 1941.1ms
+[ 4][t 2][1773649969.835327386][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c030fbdeb9d0 at 2436.669140
+[ 4][t 2][1773649969.835417509][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c030fbf692b0 at 2436.669233
+[ 4][t 2][1773649969.835564851][BufferedFd.h:215][!Session:4:main]	Flush write: +92B[left:0B]
+[ 4][t 2][1773649969.835587978][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 1944.2ms ago/1944.2ms ago, last read was 1944.3ms ago/1944.3ms ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1999.7ms, wakeup in 1999.7ms
+[ 4][t 2][1773649969.866701364][BufferedFd.h:206][!Session:4:main]	Flush read: +92B[total:92B]
+[ 4][t 2][1773649969.866810560][AuthData.cpp:155][!Session:4:main]	Receive packet in message 0x69b7c031daafc401 from session 12333254348278093694 at 2436.700625
+[ 4][t 2][1773649969.866852760][BufferedFd.h:140][!Session:4:main]	Nothing to write to [fd:13]
+[ 4][t 2][1773649969.866863727][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 17.1us ago/20.1us ago, last read was 109.9us ago/111.5us ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1968.4ms, wakeup in 1968.4ms
+[ 4][t 2][1773649971.838027715][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c032fca7e470 at 2438.671841
+[ 4][t 2][1773649971.838103055][AuthData.cpp:122][!Session:4:main]	Create identifier for message 0x69b7c032fca9a830 at 2438.671919
+[ 4][t 2][1773649971.838241100][BufferedFd.h:215][!Session:4:main]	Flush write: +92B[left:0B]
+[ 4][t 2][1773649971.838256835][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 1971.4ms ago/1971.4ms ago, last read was 1971.5ms ago/1971.5ms ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1999.8ms, wakeup in 1999.8ms
+[ 4][t 2][1773649971.901518583][BufferedFd.h:206][!Session:4:main]	Flush read: +92B[total:92B]
+[ 4][t 2][1773649971.901572942][AuthData.cpp:155][!Session:4:main]	Receive packet in message 0x69b7c033daa97401 from session 12333254348278093694 at 2438.735388
+[ 4][t 2][1773649971.901595354][BufferedFd.h:140][!Session:4:main]	Nothing to write to [fd:13]
+[ 4][t 2][1773649971.901599645][SessionConnection.cpp:1150][!Session:4:main]	Last pong was 7956.0ns ago/9256.0ns ago, last read was 54.3us ago/55.0us ago, RTT = 2.000000, ping timeout = 5.000000, read timeout = 7.000000, flush packet in 1936.4ms, wakeup in 1936.4ms

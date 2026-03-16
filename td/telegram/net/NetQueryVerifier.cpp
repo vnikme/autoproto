@@ -54,7 +54,8 @@ void NetQueryVerifier::verify(NetQueryPtr query, string nonce) {
   verification_query.nonce_or_action_ = nonce;
   queries_.emplace(query_id, std::make_pair(std::move(query), std::move(verification_query)));
 
-  LOG(WARNING) << "Application verification requested but not supported in protocol-only mode (query_id=" << query_id << ")";
+  LOG(WARNING) << "Application verification requested but not supported in protocol-only mode (query_id=" << query_id
+               << ")";
 }
 
 void NetQueryVerifier::check_recaptcha(NetQueryPtr query, string action, string recaptcha_key_id) {
@@ -75,7 +76,8 @@ void NetQueryVerifier::check_recaptcha(NetQueryPtr query, string action, string 
   verification_query.recaptcha_key_id_ = recaptcha_key_id;
   queries_.emplace(query_id, std::make_pair(std::move(query), std::move(verification_query)));
 
-  LOG(WARNING) << "Application reCAPTCHA verification requested but not supported in protocol-only mode (query_id=" << query_id << ")";
+  LOG(WARNING) << "Application reCAPTCHA verification requested but not supported in protocol-only mode (query_id="
+               << query_id << ")";
 }
 
 void NetQueryVerifier::set_verification_token(int64 query_id, string &&token, Promise<Unit> &&promise) {

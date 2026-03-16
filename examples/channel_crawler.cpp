@@ -91,51 +91,50 @@ static void crawl_next(std::shared_ptr<CrawlState> state) {
                                                                  state->limit               // limit
   );
 
-  state->client->send(
-      std::move(req), [state](td::Result<api::object_ptr<api::updates_ChannelDifference>> r_result) {
-        if (r_result.is_error()) {
-          auto err = r_result.error().message().str();
-          std::cerr << "[crawl] getChannelDifference error at pts=" << state->pts << ": " << err << std::endl;
+  state->client->send(std::move(req), [state](td::Result<api::object_ptr<api::updates_ChannelDifference>> r_result) {
+    if (r_result.is_error()) {
+      auto err = r_result.error().message().str();
+      std::cerr << "[crawl] getChannelDifference error at pts=" << state->pts << ": " << err << std::endl;
+      state->stop_fn();
+      return;
+    }
+    auto result = r_result.move_as_ok();
+
+    switch (result->get_id()) {
+      case api::updates_channelDifferenceTooLong::ID: {
+        state->pts += 10000;
+        crawl_next(state);
+        return;
+      }
+      case api::updates_channelDifferenceEmpty::ID: {
+        std::cout << "\n=== Done. Total messages: " << state->total_messages << " ===" << std::endl;
+        state->stop_fn();
+        return;
+      }
+      case api::updates_channelDifference::ID: {
+        auto *diff = static_cast<api::updates_channelDifference *>(result.get());
+        std::cout << "[crawl] pts=" << state->pts << " -> " << diff->pts_ << " : " << diff->new_messages_.size()
+                  << " messages" << std::endl;
+        for (auto &msg : diff->new_messages_) {
+          print_message(msg);
+        }
+        state->total_messages += static_cast<int32>(diff->new_messages_.size());
+        state->pts = diff->pts_;
+
+        if (diff->final_) {
+          std::cout << "\n=== Done (final). Total messages: " << state->total_messages << " ===" << std::endl;
           state->stop_fn();
-          return;
+        } else {
+          crawl_next(state);
         }
-        auto result = r_result.move_as_ok();
-
-        switch (result->get_id()) {
-          case api::updates_channelDifferenceTooLong::ID: {
-            state->pts += 10000;
-            crawl_next(state);
-            return;
-          }
-          case api::updates_channelDifferenceEmpty::ID: {
-            std::cout << "\n=== Done. Total messages: " << state->total_messages << " ===" << std::endl;
-            state->stop_fn();
-            return;
-          }
-          case api::updates_channelDifference::ID: {
-            auto *diff = static_cast<api::updates_channelDifference *>(result.get());
-            std::cout << "[crawl] pts=" << state->pts << " -> " << diff->pts_ << " : " << diff->new_messages_.size()
-                      << " messages" << std::endl;
-            for (auto &msg : diff->new_messages_) {
-              print_message(msg);
-            }
-            state->total_messages += static_cast<int32>(diff->new_messages_.size());
-            state->pts = diff->pts_;
-
-            if (diff->final_) {
-              std::cout << "\n=== Done (final). Total messages: " << state->total_messages << " ===" << std::endl;
-              state->stop_fn();
-            } else {
-              crawl_next(state);
-            }
-            return;
-          }
-          default:
-            std::cerr << "[crawl] Unknown channelDifference type: " << result->get_id() << std::endl;
-            state->stop_fn();
-            return;
-        }
-      });
+        return;
+      }
+      default:
+        std::cerr << "[crawl] Unknown channelDifference type: " << result->get_id() << std::endl;
+        state->stop_fn();
+        return;
+    }
+  });
 }
 
 // Step 2: After resolving channel, get full channel info to obtain pts
@@ -145,41 +144,40 @@ static void fetch_full_channel(::mtproto::Client *client, int64 channel_id, int6
   auto req = api::make_object<api::channels_getFullChannel>(std::move(input_channel));
 
   client->send(std::move(req), [client, channel_id, access_hash, limit, stop_fn = std::move(stop_fn)](
-                                                      td::Result<api::object_ptr<api::messages_chatFull>> r_result) {
-             if (r_result.is_error()) {
-               std::cerr << "[crawl] getFullChannel error: " << r_result.error().message().str() << std::endl;
-               stop_fn();
-               return;
-             }
-             auto result = r_result.move_as_ok();
-             auto *full_chat = result->full_chat_.get();
-             if (!full_chat || full_chat->get_id() != api::channelFull::ID) {
-               std::cerr << "[crawl] Expected channelFull but got type " << (full_chat ? full_chat->get_id() : 0)
-                         << std::endl;
-               stop_fn();
-               return;
-             }
-             auto *cf = static_cast<api::channelFull *>(full_chat);
-             int32 channel_pts = cf->pts_;
-             int32 start_pts = std::max(channel_pts - 999999, 1);
-             constexpr int32 STEP = 16384;
+                                   td::Result<api::object_ptr<api::messages_chatFull>> r_result) {
+    if (r_result.is_error()) {
+      std::cerr << "[crawl] getFullChannel error: " << r_result.error().message().str() << std::endl;
+      stop_fn();
+      return;
+    }
+    auto result = r_result.move_as_ok();
+    auto *full_chat = result->full_chat_.get();
+    if (!full_chat || full_chat->get_id() != api::channelFull::ID) {
+      std::cerr << "[crawl] Expected channelFull but got type " << (full_chat ? full_chat->get_id() : 0) << std::endl;
+      stop_fn();
+      return;
+    }
+    auto *cf = static_cast<api::channelFull *>(full_chat);
+    int32 channel_pts = cf->pts_;
+    int32 start_pts = std::max(channel_pts - 999999, 1);
+    constexpr int32 STEP = 16384;
 
-             std::cout << "[crawl] Channel pts=" << channel_pts << ", starting from pts=" << start_pts
-                       << ", step=" << STEP << std::endl;
+    std::cout << "[crawl] Channel pts=" << channel_pts << ", starting from pts=" << start_pts << ", step=" << STEP
+              << std::endl;
 
-             auto state = std::make_shared<CrawlState>();
-             state->client = client;
-             state->channel_id = channel_id;
-             state->access_hash = access_hash;
-             state->pts = start_pts;
-             state->max_pts = start_pts + STEP;
-             state->step = STEP;
-             state->limit = limit;
-             state->total_messages = 0;
-             state->stop_fn = stop_fn;
+    auto state = std::make_shared<CrawlState>();
+    state->client = client;
+    state->channel_id = channel_id;
+    state->access_hash = access_hash;
+    state->pts = start_pts;
+    state->max_pts = start_pts + STEP;
+    state->step = STEP;
+    state->limit = limit;
+    state->total_messages = 0;
+    state->stop_fn = stop_fn;
 
-             crawl_next(state);
-           });
+    crawl_next(state);
+  });
 }
 
 int main() {
@@ -249,29 +247,27 @@ int main() {
       auto *cli = client.get();
       auto req = api::make_object<api::contacts_resolveUsername>(0, channel_username, std::string());
 
-      cli->send(
-          std::move(req),
-          [cli, limit, stop_fn](td::Result<api::object_ptr<api::contacts_resolvedPeer>> r_result) {
-            if (r_result.is_error()) {
-              std::cerr << "[crawl] resolveUsername error: " << r_result.error().message().str() << std::endl;
-              stop_fn();
-              return;
-            }
-            auto result = r_result.move_as_ok();
-            auto *resolved = result.get();
+      cli->send(std::move(req), [cli, limit,
+                                 stop_fn](td::Result<api::object_ptr<api::contacts_resolvedPeer>> r_result) {
+        if (r_result.is_error()) {
+          std::cerr << "[crawl] resolveUsername error: " << r_result.error().message().str() << std::endl;
+          stop_fn();
+          return;
+        }
+        auto result = r_result.move_as_ok();
+        auto *resolved = result.get();
 
-            for (auto &chat : resolved->chats_) {
-              if (chat && chat->get_id() == api::channel::ID) {
-                auto *ch = static_cast<api::channel *>(chat.get());
-                std::cout << "[crawl] Resolved: channel_id=" << ch->id_ << " access_hash=" << ch->access_hash_
-                          << std::endl;
-                fetch_full_channel(cli, ch->id_, ch->access_hash_, limit, stop_fn);
-                return;
-              }
-            }
-            std::cerr << "[crawl] No channel found in resolveUsername result" << std::endl;
-            stop_fn();
-          });
+        for (auto &chat : resolved->chats_) {
+          if (chat && chat->get_id() == api::channel::ID) {
+            auto *ch = static_cast<api::channel *>(chat.get());
+            std::cout << "[crawl] Resolved: channel_id=" << ch->id_ << " access_hash=" << ch->access_hash_ << std::endl;
+            fetch_full_channel(cli, ch->id_, ch->access_hash_, limit, stop_fn);
+            return;
+          }
+        }
+        std::cerr << "[crawl] No channel found in resolveUsername result" << std::endl;
+        stop_fn();
+      });
     } else if (state == 3) {  // Error
       std::cerr << "[auth] Error: " << info << std::endl;
       client->stop();

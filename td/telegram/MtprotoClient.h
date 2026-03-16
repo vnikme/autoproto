@@ -101,7 +101,9 @@ class MtprotoClient final : public Actor {
   void on_update(tl_object_ptr<telegram_api::Updates> updates, uint64 auth_key_id);
 
   // Access auth manager (for internal use by NetQueryCreator etc.)
-  AuthManager *auth_manager() { return auth_manager_.get(); }
+  AuthManager *auth_manager() {
+    return auth_manager_.get();
+  }
 
   // Bot token authentication
   void auth_with_bot_token(string bot_token, Promise<Unit> promise);
@@ -136,6 +138,8 @@ class MtprotoClient final : public Actor {
 
   ActorOwn<ConfigManager> config_manager_;
 
+  bool sync_pending_ = false;  // true while handling updatesTooLong
+
   int32 actor_refcnt_ = 0;
   int32 request_actor_refcnt_ = 0;
 
@@ -149,6 +153,15 @@ class MtprotoClient final : public Actor {
   void hangup_shared() final;
 
   void init();
+
+  void handle_updates_too_long();
+  void on_get_state_result(Result<tl_object_ptr<telegram_api::updates_state>> r_state);
+  void on_get_difference_result(Result<tl_object_ptr<telegram_api::updates_Difference>> r_diff);
+  void run_get_difference(int32 pts, int32 date, int32 qts);
+  void deliver_difference_updates(std::vector<tl_object_ptr<telegram_api::Message>> msgs,
+                                  std::vector<tl_object_ptr<telegram_api::Update>> other,
+                                  std::vector<tl_object_ptr<telegram_api::Chat>> chats,
+                                  std::vector<tl_object_ptr<telegram_api::User>> users);
 };
 
 }  // namespace td

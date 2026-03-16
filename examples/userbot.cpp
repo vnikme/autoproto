@@ -68,13 +68,11 @@ static void send_text(::mtproto::Client *client, int64 user_id, int64 access_has
                                                   nullptr   // suggested_post
       );
 
-  client->send(std::move(send_msg),
-               [user_id](td::Result<api::object_ptr<api::Updates>> result) {
-                 if (result.is_error()) {
-                   std::cerr << "[msg] Failed to send to user " << user_id << ": " << result.error().message().str()
-                             << std::endl;
-                 }
-               });
+  client->send(std::move(send_msg), [user_id](td::Result<api::object_ptr<api::Updates>> result) {
+    if (result.is_error()) {
+      std::cerr << "[msg] Failed to send to user " << user_id << ": " << result.error().message().str() << std::endl;
+    }
+  });
 }
 
 int main() {
@@ -162,34 +160,33 @@ int main() {
           auto req = api::make_object<api::messages_getMessages>(std::move(ids));
           int64 uid = msg->user_id_;
           std::string text = msg->message_;
-          cli->send(std::move(req),
-                    [cli, uid, text = std::move(text)](td::Result<api::object_ptr<api::messages_Messages>> r_result) mutable {
-                      if (r_result.is_error()) {
-                        std::cerr << "[msg] Failed to fetch message for user " << uid << ": "
-                                  << r_result.error().message().str() << std::endl;
-                        return;
-                      }
-                      auto result = r_result.move_as_ok();
-                      switch (result->get_id()) {
-                        case api::messages_messages::ID:
-                          cache_users(static_cast<api::messages_messages *>(result.get())->users_);
-                          break;
-                        case api::messages_messagesSlice::ID:
-                          cache_users(static_cast<api::messages_messagesSlice *>(result.get())->users_);
-                          break;
-                        default:
-                          break;
-                      }
-                      auto it2 = g_user_hashes.find(uid);
-                      if (it2 != g_user_hashes.end()) {
-                        std::cout << "[msg] From user " << uid << ": " << text << std::endl;
-                        send_text(cli, uid, it2->second, text);
-                        std::cout << "[msg] Echoed back to user " << uid << std::endl;
-                      } else {
-                        std::cout << "[msg] From user " << uid << ": " << text << " (could not resolve access_hash)"
-                                  << std::endl;
-                      }
-                    });
+          cli->send(std::move(req), [cli, uid, text = std::move(text)](
+                                        td::Result<api::object_ptr<api::messages_Messages>> r_result) mutable {
+            if (r_result.is_error()) {
+              std::cerr << "[msg] Failed to fetch message for user " << uid << ": " << r_result.error().message().str()
+                        << std::endl;
+              return;
+            }
+            auto result = r_result.move_as_ok();
+            switch (result->get_id()) {
+              case api::messages_messages::ID:
+                cache_users(static_cast<api::messages_messages *>(result.get())->users_);
+                break;
+              case api::messages_messagesSlice::ID:
+                cache_users(static_cast<api::messages_messagesSlice *>(result.get())->users_);
+                break;
+              default:
+                break;
+            }
+            auto it2 = g_user_hashes.find(uid);
+            if (it2 != g_user_hashes.end()) {
+              std::cout << "[msg] From user " << uid << ": " << text << std::endl;
+              send_text(cli, uid, it2->second, text);
+              std::cout << "[msg] Echoed back to user " << uid << std::endl;
+            } else {
+              std::cout << "[msg] From user " << uid << ": " << text << " (could not resolve access_hash)" << std::endl;
+            }
+          });
         }
         break;
       }
@@ -214,6 +211,9 @@ int main() {
         }
         break;
       }
+      case api::updatesTooLong::ID:
+        // Handled internally by MtprotoClient (triggers getState + getDifference)
+        break;
       default:
         break;
     }

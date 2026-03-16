@@ -51,15 +51,13 @@ static void send_echo(::mtproto::Client *client, int64 user_id, int64 access_has
       0, false, false, false, false, false, false, false, false, std::move(peer), nullptr, text, random_id, nullptr,
       std::vector<api::object_ptr<api::MessageEntity>>{}, 0, 0, nullptr, nullptr, 0, 0, nullptr);
 
-  client->send(std::move(send_msg),
-               [user_id](td::Result<api::object_ptr<api::Updates>> result) {
-                 if (result.is_error()) {
-                   std::cerr << "[msg] Failed to echo to user " << user_id << ": " << result.error().message().str()
-                             << std::endl;
-                   return;
-                 }
-                 std::cout << "[msg] Echoed back to user " << user_id << std::endl;
-               });
+  client->send(std::move(send_msg), [user_id](td::Result<api::object_ptr<api::Updates>> result) {
+    if (result.is_error()) {
+      std::cerr << "[msg] Failed to echo to user " << user_id << ": " << result.error().message().str() << std::endl;
+      return;
+    }
+    std::cout << "[msg] Echoed back to user " << user_id << std::endl;
+  });
 }
 
 int main() {
@@ -157,22 +155,22 @@ int main() {
           auto req = api::make_object<api::messages_getMessages>(std::move(ids));
           int64 uid = msg->user_id_;
           std::string text = msg->message_;
-          cli->send(std::move(req),
-                    [cli, uid, text = std::move(text)](td::Result<api::object_ptr<api::messages_Messages>> r_result) mutable {
-                      if (r_result.is_error()) {
-                        return;
-                      }
-                      auto result = r_result.move_as_ok();
-                      if (result->get_id() == api::messages_messages::ID) {
-                        cache_users(static_cast<api::messages_messages *>(result.get())->users_);
-                      } else if (result->get_id() == api::messages_messagesSlice::ID) {
-                        cache_users(static_cast<api::messages_messagesSlice *>(result.get())->users_);
-                      }
-                      auto it2 = g_user_hashes.find(uid);
-                      if (it2 != g_user_hashes.end()) {
-                        send_echo(cli, uid, it2->second, text);
-                      }
-                    });
+          cli->send(std::move(req), [cli, uid, text = std::move(text)](
+                                        td::Result<api::object_ptr<api::messages_Messages>> r_result) mutable {
+            if (r_result.is_error()) {
+              return;
+            }
+            auto result = r_result.move_as_ok();
+            if (result->get_id() == api::messages_messages::ID) {
+              cache_users(static_cast<api::messages_messages *>(result.get())->users_);
+            } else if (result->get_id() == api::messages_messagesSlice::ID) {
+              cache_users(static_cast<api::messages_messagesSlice *>(result.get())->users_);
+            }
+            auto it2 = g_user_hashes.find(uid);
+            if (it2 != g_user_hashes.end()) {
+              send_echo(cli, uid, it2->second, text);
+            }
+          });
         }
         break;
       }
@@ -197,6 +195,9 @@ int main() {
         }
         break;
       }
+      case api::updatesTooLong::ID:
+        // Handled internally by MtprotoClient (triggers getState + getDifference)
+        break;
       default:
         break;
     }

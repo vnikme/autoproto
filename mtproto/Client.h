@@ -84,20 +84,19 @@ class Client {
   void send(td::telegram_api::object_ptr<T> function,
             std::function<void(td::Result<typename T::ReturnType>)> callback) {
     send_raw(*function,
-             td::PromiseCreator::lambda(
-                 [cb = std::move(callback)](td::Result<td::BufferSlice> r_buffer) mutable {
-                   if (r_buffer.is_error()) {
-                     cb(r_buffer.move_as_error());
-                     return;
-                   }
-                   auto buffer = r_buffer.move_as_ok();
-                   auto r_result = td::fetch_result<T>(buffer);
-                   if (r_result.is_error()) {
-                     cb(r_result.move_as_error());
-                   } else {
-                     cb(r_result.move_as_ok());
-                   }
-                 }));
+             td::PromiseCreator::lambda([cb = std::move(callback)](td::Result<td::BufferSlice> r_buffer) mutable {
+               if (r_buffer.is_error()) {
+                 cb(r_buffer.move_as_error());
+                 return;
+               }
+               auto buffer = r_buffer.move_as_ok();
+               auto r_result = td::fetch_result<T>(buffer);
+               if (r_result.is_error()) {
+                 cb(r_result.move_as_error());
+               } else {
+                 cb(r_result.move_as_ok());
+               }
+             }));
   }
 
   // Run the event loop (blocks until stop() is called)

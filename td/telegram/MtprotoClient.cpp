@@ -134,6 +134,11 @@ void MtprotoClient::on_result(NetQueryPtr query) {
 
 void MtprotoClient::on_update(tl_object_ptr<telegram_api::Updates> updates, uint64 auth_key_id) {
   LOG(INFO) << "MtprotoClient::on_update type_id=" << (updates ? updates->get_id() : 0);
+  if (updates && updates->get_id() == telegram_api::updatesTooLong::ID) {
+    LOG(INFO) << "Received updatesTooLong — starting one-shot sync";
+    handle_updates_too_long();
+    return;
+  }
   if (update_handler_) {
     update_handler_(std::move(updates));
   } else {
@@ -233,6 +238,93 @@ void MtprotoClient::tear_down() {
   }
   // Do NOT destroy the dispatcher here — session actors may still be processing
   // during scheduler shutdown. The Global destructor will clean it up.
+}
+
+void MtprotoClient::handle_updates_too_long() {
+  if (sync_pending_) {
+    LOG(INFO) << "Sync already in progress, ignoring duplicate updatesTooLong";
+    return;
+  }
+  sync_pending_ = true;
+  send(telegram_api::make_object<telegram_api::updates_getState>(),
+       PromiseCreator::lambda(
+           [self = actor_id(this)](Result<tl_object_ptr<telegram_api::updates_state>> r_state) mutable {
+             send_closure(self, &MtprotoClient::on_get_state_result, std::move(r_state));
+           }));
+}
+
+void MtprotoClient::on_get_state_result(Result<tl_object_ptr<telegram_api::updates_state>> r_state) {
+  if (r_state.is_error()) {
+    LOG(ERROR) << "updates.getState failed: " << r_state.error();
+    sync_pending_ = false;
+    return;
+  }
+  auto state = r_state.move_as_ok();
+  LOG(INFO) << "updates.getState: pts=" << state->pts_ << " qts=" << state->qts_
+            << " date=" << state->date_ << " seq=" << state->seq_;
+  run_get_difference(state->pts_, state->date_, state->qts_);
+}
+
+void MtprotoClient::run_get_difference(int32 pts, int32 date, int32 qts) {
+  LOG(INFO) << "Running updates.getDifference pts=" << pts << " date=" << date << " qts=" << qts;
+  send(telegram_api::make_object<telegram_api::updates_getDifference>(0, pts, 0, 0, date, qts, 0),
+       PromiseCreator::lambda(
+           [self = actor_id(this)](Result<tl_object_ptr<telegram_api::updates_Difference>> r_diff) mutable {
+             send_closure(self, &MtprotoClient::on_get_difference_result, std::move(r_diff));
+           }));
+}
+
+void MtprotoClient::on_get_difference_result(Result<tl_object_ptr<telegram_api::updates_Difference>> r_diff) {
+  sync_pending_ = false;
+  if (r_diff.is_error()) {
+    LOG(ERROR) << "updates.getDifference failed: " << r_diff.error();
+    return;
+  }
+  auto diff = r_diff.move_as_ok();
+  switch (diff->get_id()) {
+    case telegram_api::updates_differenceEmpty::ID:
+      LOG(INFO) << "getDifference: empty — caught up";
+      break;
+    case telegram_api::updates_difference::ID: {
+      auto *d = static_cast<telegram_api::updates_difference *>(diff.get());
+      LOG(INFO) << "getDifference: " << d->new_messages_.size() << " messages, "
+                << d->other_updates_.size() << " other updates";
+      deliver_difference_updates(std::move(d->new_messages_), std::move(d->other_updates_),
+                                 std::move(d->chats_), std::move(d->users_));
+      break;
+    }
+    case telegram_api::updates_differenceSlice::ID: {
+      auto *d = static_cast<telegram_api::updates_differenceSlice *>(diff.get());
+      LOG(INFO) << "getDifference: slice with " << d->new_messages_.size() << " messages";
+      deliver_difference_updates(std::move(d->new_messages_), std::move(d->other_updates_),
+                                 std::move(d->chats_), std::move(d->users_));
+      break;
+    }
+    case telegram_api::updates_differenceTooLong::ID:
+      LOG(INFO) << "getDifference: too long — some updates skipped";
+      break;
+    default:
+      break;
+  }
+}
+
+void MtprotoClient::deliver_difference_updates(std::vector<tl_object_ptr<telegram_api::Message>> msgs,
+                                               std::vector<tl_object_ptr<telegram_api::Update>> other,
+                                               std::vector<tl_object_ptr<telegram_api::Chat>> chats,
+                                               std::vector<tl_object_ptr<telegram_api::User>> users) {
+  if (msgs.empty() && other.empty()) {
+    return;
+  }
+  for (auto &msg : msgs) {
+    other.push_back(telegram_api::make_object<telegram_api::updateNewMessage>(std::move(msg), 0, 0));
+  }
+  auto upd = telegram_api::make_object<telegram_api::updates>();
+  upd->updates_ = std::move(other);
+  upd->users_ = std::move(users);
+  upd->chats_ = std::move(chats);
+  if (update_handler_) {
+    update_handler_(std::move(upd));
+  }
 }
 
 }  // namespace td
