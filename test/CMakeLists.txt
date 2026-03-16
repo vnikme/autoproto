@@ -17,10 +17,6 @@ set(TESTS_MAIN
   main.cpp
 )
 
-#add_library(all_tests STATIC ${TD_TEST_SOURCE})
-#target_include_directories(all_tests PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
-#target_link_libraries(all_tests PRIVATE tdcore tdclient)
-
 if (NOT CMAKE_CROSSCOMPILING OR EMSCRIPTEN)
   if (OPENSSL_FOUND)
     add_executable(test-crypto EXCLUDE_FROM_ALL crypto.cpp)

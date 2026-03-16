@@ -40,9 +40,6 @@ target_link_libraries(bench_http_reader PRIVATE tdnet tdutils)
 add_executable(bench_handshake bench_handshake.cpp)
 target_link_libraries(bench_handshake PRIVATE tdmtproto tdutils)
 
-add_executable(bench_misc bench_misc.cpp)
-target_link_libraries(bench_misc PRIVATE tdcore tdutils)
-
 add_executable(check_tls check_tls.cpp)
 target_link_libraries(check_tls PRIVATE tdutils)
 
